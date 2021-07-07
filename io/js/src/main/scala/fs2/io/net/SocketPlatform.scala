@@ -42,70 +42,49 @@ import fs2.js.node.nodeStrings
 import scala.annotation.nowarn
 import scala.scalajs.js
 import scala.util.control.NoStackTrace
+import fs2.js.node.streamMod
+import cats.effect.kernel.Ref
 
 private[net] trait SocketCompanionPlatform {
-
-  final case object TransmissionError extends RuntimeException with NoStackTrace
 
   private[net] def forAsync[F[_]](
       sock: netMod.Socket
   )(implicit F: Async[F]): Resource[F, Socket[F]] =
-    for {
-      dispatcher <- Dispatcher[F]
-      buffer <- SignallingRef.of(Chunk.empty[Byte]).toResource
-      read <- Semaphore[F](1).toResource
-      ended <- F.deferred[Either[Throwable, Unit]].toResource
-      _ <- registerListener[Buffer](sock, nodeStrings.data)(_.on_data(_, _)) { data =>
-        dispatcher.unsafeRunAndForget(
-          buffer.update { buffer =>
-            buffer ++ data.toChunk
-          }
-        )
-      }
-      _ <- registerListener0(sock, nodeStrings.end)(_.on_end(_, _)) { () =>
-        dispatcher.unsafeRunAndForget(ended.complete(Right(())))
-      }
-      _ <- registerListener[js.Error](sock, nodeStrings.error)(_.on_error(_, _)) { error =>
-        dispatcher.unsafeRunAndForget(
-          ended.complete(Left(js.JavaScriptException(error)))
-        )
-      }
-      socket <- Resource.make(F.delay(new AsyncSocket[F](sock, buffer, read, ended.get.rethrow))) {
+    Resource.make(F.ref(fromReadable(sock.asInstanceOf[streamMod.Readable])).map(ref => new AsyncSocket[F](sock, ref, ???))) {
         _ =>
           F.delay {
             if (!sock.destroyed)
               sock.asInstanceOf[js.Dynamic].destroy(): @nowarn
           }
       }
-    } yield socket
 
   private final class AsyncSocket[F[_]](
       sock: netMod.Socket,
-      buffer: SignallingRef[F, Chunk[Byte]],
-      readSemaphore: Semaphore[F],
-      ended: F[Unit]
+      readStream: Ref[F, Stream[F, Byte]],
+      readSemaphore: Semaphore[F]
   )(implicit F: Async[F])
       extends Socket[F] {
 
-    private def read(minBytes: Int, maxBytes: Int): F[Chunk[Byte]] =
+    override def read(maxBytes: Int): F[Option[Chunk[Byte]]] =
       readSemaphore.permit.use { _ =>
-        (Stream.eval(buffer.get) ++
-          (Stream.bracket(F.delay(sock.resume()))(_ => F.delay(sock.pause())) >> buffer.discrete))
-          .filter(_.size >= minBytes)
-          .merge(Stream.eval(ended))
-          .head
-          .compile
-          .drain *> buffer.modify(_.splitAt(maxBytes).swap)
+        (for {
+          stream <- OptionT.liftF(readStream.get)
+          (head, tail) <- OptionT(stream.pull.unconsLimit(maxBytes).flatMap(Pull.output1).stream.compile.last.map(_.flatten))
+          _ <- OptionT.liftF(readStream.set(tail))
+        } yield head).value
       }
 
-    override def read(maxBytes: Int): F[Option[Chunk[Byte]]] =
-      OptionT.liftF(read(1, maxBytes)).filter(_.nonEmpty).value
-
     override def readN(numBytes: Int): F[Chunk[Byte]] =
-      read(numBytes, numBytes)
+      readSemaphore.permit.use { _ =>
+        (for {
+          stream <- OptionT.liftF(readStream.get)
+          (head, tail) <- OptionT(stream.pull.unconsN(numBytes, allowFewer = true).flatMap(Pull.output1).stream.compile.last.map(_.flatten))
+          _ <- OptionT.liftF(readStream.set(tail))
+        } yield head).getOrElse(Chunk.empty)
+      }
 
     override def reads: Stream[F, Byte] =
-      Stream.repeatEval(read(1, Int.MaxValue)).takeWhile(_.nonEmpty).flatMap(Stream.chunk)
+      Stream.eval(readStream.get).flatten
 
     override def endOfInput: F[Unit] =
       F.raiseError(new UnsupportedOperationException)
