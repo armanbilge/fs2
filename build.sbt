@@ -131,12 +131,12 @@ ThisBuild / mimaBinaryIssueFilters ++= Seq(
 lazy val root = project
   .in(file("."))
   .enablePlugins(NoPublishPlugin, SonatypeCiReleasePlugin)
-  .aggregate(coreJVM, coreJS, node, io.jvm, io.js)
+  .aggregate(coreJVM, coreJS, node, io.jvm, io.js, reactiveStreams)
 
 lazy val rootJVM = project
   .in(file("."))
   .enablePlugins(NoPublishPlugin)
-  .aggregate(coreJVM, io.jvm)
+  .aggregate(coreJVM, io.jvm, reactiveStreams)
 lazy val rootJS =
   project.in(file(".")).enablePlugins(NoPublishPlugin).aggregate(coreJS, node, io.js)
 
@@ -270,33 +270,33 @@ lazy val io = crossProject(JVMPlatform, JSPlatform)
   .dependsOn(core % "compile->compile;test->test")
   .jsConfigure(_.dependsOn(node))
 
-// lazy val reactiveStreams = project
-//   .in(file("reactive-streams"))
-//   .enablePlugins(SbtOsgi)
-//   .settings(
-//     name := "fs2-reactive-streams",
-//     mimaPreviousArtifacts := Set.empty,
-//     sonatypeCredentialHost := "s01.oss.sonatype.org",
-//     Test / fork := true,
-//     libraryDependencies ++= Seq(
-//       "org.reactivestreams" % "reactive-streams" % "1.0.3",
-//       "org.reactivestreams" % "reactive-streams-tck" % "1.0.3" % "test",
-//       ("org.scalatestplus" %% "testng-6-7" % "3.2.9.0" % "test").cross(CrossVersion.for3Use2_13)
-//     ),
-//     OsgiKeys.exportPackage := Seq("fs2.interop.reactivestreams.*"),
-//     OsgiKeys.privatePackage := Seq(),
-//     OsgiKeys.importPackage := {
-//       val Some((major, minor)) = CrossVersion.partialVersion(scalaVersion.value)
-//       Seq(
-//         s"""scala.*;version="[$major.$minor,$major.${minor + 1})"""",
-//         """fs2.*;version="${Bundle-Version}"""",
-//         "*"
-//       )
-//     },
-//     OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package"),
-//     osgiSettings
-//   )
-//   .dependsOn(coreJVM % "compile->compile;test->test")
+lazy val reactiveStreams = project
+  .in(file("reactive-streams"))
+  .enablePlugins(SbtOsgi)
+  .settings(
+    name := "fs2-reactive-streams",
+    mimaPreviousArtifacts := Set.empty,
+    sonatypeCredentialHost := "s01.oss.sonatype.org",
+    Test / fork := true,
+    libraryDependencies ++= Seq(
+      "org.reactivestreams" % "reactive-streams" % "1.0.3",
+      "org.reactivestreams" % "reactive-streams-tck" % "1.0.3" % "test",
+      ("org.scalatestplus" %% "testng-6-7" % "3.2.9.0" % "test").cross(CrossVersion.for3Use2_13)
+    ),
+    OsgiKeys.exportPackage := Seq("fs2.interop.reactivestreams.*"),
+    OsgiKeys.privatePackage := Seq(),
+    OsgiKeys.importPackage := {
+      val Some((major, minor)) = CrossVersion.partialVersion(scalaVersion.value)
+      Seq(
+        s"""scala.*;version="[$major.$minor,$major.${minor + 1})"""",
+        """fs2.*;version="${Bundle-Version}"""",
+        "*"
+      )
+    },
+    OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package"),
+    osgiSettings
+  )
+  .dependsOn(coreJVM % "compile->compile;test->test")
 
 // lazy val benchmark = project
 //   .in(file("benchmark"))
