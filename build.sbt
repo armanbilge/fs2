@@ -131,81 +131,80 @@ ThisBuild / mimaBinaryIssueFilters ++= Seq(
 lazy val root = project
   .in(file("."))
   .enablePlugins(NoPublishPlugin, SonatypeCiReleasePlugin)
-  .aggregate(coreJVM, coreJS, io.jvm, node, io.js, reactiveStreams, benchmark)
+  .aggregate(node)
 
 lazy val rootJVM = project
   .in(file("."))
   .enablePlugins(NoPublishPlugin)
-  .aggregate(coreJVM, io.jvm, reactiveStreams, benchmark)
 lazy val rootJS =
-  project.in(file(".")).enablePlugins(NoPublishPlugin).aggregate(coreJS, node, io.js)
+  project.in(file(".")).enablePlugins(NoPublishPlugin).aggregate(node)
 
 lazy val IntegrationTest = config("it").extend(Test)
 
-lazy val core = crossProject(JVMPlatform, JSPlatform)
-  .in(file("core"))
-  .configs(IntegrationTest)
-  .settings(Defaults.itSettings: _*)
-  .settings(
-    inConfig(IntegrationTest)(org.scalafmt.sbt.ScalafmtPlugin.scalafmtConfigSettings)
-  )
-  .settings(
-    name := "fs2-core",
-    mimaPreviousArtifacts := Set.empty,
-    sonatypeCredentialHost := "s01.oss.sonatype.org",
-    Compile / scalafmt / unmanagedSources := (Compile / scalafmt / unmanagedSources).value
-      .filterNot(_.toString.endsWith("NotGiven.scala")),
-    Test / scalafmt / unmanagedSources := (Test / scalafmt / unmanagedSources).value
-      .filterNot(_.toString.endsWith("NotGiven.scala"))
-  )
-  .settings(
-    name := "fs2-core",
-    libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-core" % "2.6.1",
-      "org.typelevel" %%% "cats-laws" % "2.6.1" % Test,
-      "org.typelevel" %%% "cats-effect" % "3.1.1",
-      "org.typelevel" %%% "cats-effect-laws" % "3.1.1" % Test,
-      "org.typelevel" %%% "cats-effect-testkit" % "3.1.1" % Test,
-      "org.scodec" %%% "scodec-bits" % "1.1.27",
-      "org.typelevel" %%% "scalacheck-effect-munit" % "1.0.2" % Test,
-      "org.typelevel" %%% "munit-cats-effect-3" % "1.0.5" % Test,
-      "org.typelevel" %%% "discipline-munit" % "1.0.9" % Test
-    ),
-    Compile / unmanagedSourceDirectories ++= {
-      val major = if (isDotty.value) "-3" else "-2"
-      List(CrossType.Pure, CrossType.Full).flatMap(
-        _.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + major))
-      )
-    },
-    Test / unmanagedSourceDirectories ++= {
-      val major = if (isDotty.value) "-3" else "-2"
-      List(CrossType.Pure, CrossType.Full).flatMap(
-        _.sharedSrcDir(baseDirectory.value, "test").toList.map(f => file(f.getPath + major))
-      )
-    }
-  )
+// lazy val core = crossProject(JVMPlatform, JSPlatform)
+//   .in(file("core"))
+//   .configs(IntegrationTest)
+//   .settings(Defaults.itSettings: _*)
+//   .settings(
+//     inConfig(IntegrationTest)(org.scalafmt.sbt.ScalafmtPlugin.scalafmtConfigSettings)
+//   )
+//   .settings(
+//     name := "fs2-core",
+//     mimaPreviousArtifacts := Set.empty,
+//     sonatypeCredentialHost := "s01.oss.sonatype.org",
+//     Compile / scalafmt / unmanagedSources := (Compile / scalafmt / unmanagedSources).value
+//       .filterNot(_.toString.endsWith("NotGiven.scala")),
+//     Test / scalafmt / unmanagedSources := (Test / scalafmt / unmanagedSources).value
+//       .filterNot(_.toString.endsWith("NotGiven.scala"))
+//   )
+//   .settings(
+//     name := "fs2-core",
+//     libraryDependencies ++= Seq(
+//       "org.typelevel" %%% "cats-core" % "2.6.1",
+//       "org.typelevel" %%% "cats-laws" % "2.6.1" % Test,
+//       "org.typelevel" %%% "cats-effect" % "3.1.1",
+//       "org.typelevel" %%% "cats-effect-laws" % "3.1.1" % Test,
+//       "org.typelevel" %%% "cats-effect-testkit" % "3.1.1" % Test,
+//       "org.scodec" %%% "scodec-bits" % "1.1.27",
+//       "org.typelevel" %%% "scalacheck-effect-munit" % "1.0.2" % Test,
+//       "org.typelevel" %%% "munit-cats-effect-3" % "1.0.5" % Test,
+//       "org.typelevel" %%% "discipline-munit" % "1.0.9" % Test
+//     ),
+//     Compile / unmanagedSourceDirectories ++= {
+//       val major = if (isDotty.value) "-3" else "-2"
+//       List(CrossType.Pure, CrossType.Full).flatMap(
+//         _.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + major))
+//       )
+//     },
+//     Test / unmanagedSourceDirectories ++= {
+//       val major = if (isDotty.value) "-3" else "-2"
+//       List(CrossType.Pure, CrossType.Full).flatMap(
+//         _.sharedSrcDir(baseDirectory.value, "test").toList.map(f => file(f.getPath + major))
+//       )
+//     }
+//   )
 
-lazy val coreJVM = core.jvm
-  .enablePlugins(SbtOsgi)
-  .settings(
-    Test / fork := true,
-    OsgiKeys.exportPackage := Seq("fs2.*"),
-    OsgiKeys.privatePackage := Seq(),
-    OsgiKeys.importPackage := {
-      val Some((major, minor)) = CrossVersion.partialVersion(scalaVersion.value)
-      Seq(s"""scala.*;version="[$major.$minor,$major.${minor + 1})"""", "*")
-    },
-    OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package"),
-    osgiSettings
-  )
+// lazy val coreJVM = core.jvm
+//   .enablePlugins(SbtOsgi)
+//   .settings(
+//     Test / fork := true,
+//     OsgiKeys.exportPackage := Seq("fs2.*"),
+//     OsgiKeys.privatePackage := Seq(),
+//     OsgiKeys.importPackage := {
+//       val Some((major, minor)) = CrossVersion.partialVersion(scalaVersion.value)
+//       Seq(s"""scala.*;version="[$major.$minor,$major.${minor + 1})"""", "*")
+//     },
+//     OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package"),
+//     osgiSettings
+//   )
 
-lazy val coreJS = core.js
-  .disablePlugins(DoctestPlugin)
-  .settings(
-    Test / scalaJSStage := FastOptStage,
-    jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv(),
-    scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
-  )
+// lazy val coreJS = core.js
+//   .disablePlugins(DoctestPlugin)
+//   .settings(
+//     Test / scalaJSStage := FastOptStage,
+//     jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv(),
+//     scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
+//   )
 
 lazy val node = project
   .in(file("node"))
@@ -236,94 +235,94 @@ lazy val node = project
     osgiSettings
   )
 
-lazy val io = crossProject(JVMPlatform, JSPlatform)
-  .in(file("io"))
-  .enablePlugins(SbtOsgi)
-  .jsConfigure(_.enablePlugins(ScalaJSBundlerPlugin))
-  .settings(
-    name := "fs2-io",
-    mimaPreviousArtifacts := Set.empty,
-    sonatypeCredentialHost := "s01.oss.sonatype.org",
-    libraryDependencies += "com.comcast" %%% "ip4s-core" % "3.0.3",
-    OsgiKeys.exportPackage := Seq("fs2.io.*"),
-    OsgiKeys.privatePackage := Seq(),
-    OsgiKeys.importPackage := {
-      val Some((major, minor)) = CrossVersion.partialVersion(scalaVersion.value)
-      Seq(
-        s"""scala.*;version="[$major.$minor,$major.${minor + 1})"""",
-        """fs2.*;version="${Bundle-Version}"""",
-        "*"
-      )
-    },
-    OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package"),
-    osgiSettings
-  )
-  .jvmSettings(
-    Test / fork := true,
-    libraryDependencies += "com.github.jnr" % "jnr-unixsocket" % "0.38.8" % Optional
-  )
-  .jsSettings(
-    scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
-    Test / npmDevDependencies += "jks-js" -> "1.0.1",
-    useYarn := true
-  )
-  .dependsOn(core % "compile->compile;test->test")
-  .jsConfigure(_.dependsOn(node))
+// lazy val io = crossProject(JVMPlatform, JSPlatform)
+//   .in(file("io"))
+//   .enablePlugins(SbtOsgi)
+//   .jsConfigure(_.enablePlugins(ScalaJSBundlerPlugin))
+//   .settings(
+//     name := "fs2-io",
+//     mimaPreviousArtifacts := Set.empty,
+//     sonatypeCredentialHost := "s01.oss.sonatype.org",
+//     libraryDependencies += "com.comcast" %%% "ip4s-core" % "3.0.3",
+//     OsgiKeys.exportPackage := Seq("fs2.io.*"),
+//     OsgiKeys.privatePackage := Seq(),
+//     OsgiKeys.importPackage := {
+//       val Some((major, minor)) = CrossVersion.partialVersion(scalaVersion.value)
+//       Seq(
+//         s"""scala.*;version="[$major.$minor,$major.${minor + 1})"""",
+//         """fs2.*;version="${Bundle-Version}"""",
+//         "*"
+//       )
+//     },
+//     OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package"),
+//     osgiSettings
+//   )
+//   .jvmSettings(
+//     Test / fork := true,
+//     libraryDependencies += "com.github.jnr" % "jnr-unixsocket" % "0.38.8" % Optional
+//   )
+//   .jsSettings(
+//     scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
+//     Test / npmDevDependencies += "jks-js" -> "1.0.1",
+//     useYarn := true
+//   )
+//   .dependsOn(core % "compile->compile;test->test")
+//   .jsConfigure(_.dependsOn(node))
 
-lazy val reactiveStreams = project
-  .in(file("reactive-streams"))
-  .enablePlugins(SbtOsgi)
-  .settings(
-    name := "fs2-reactive-streams",
-    mimaPreviousArtifacts := Set.empty,
-    sonatypeCredentialHost := "s01.oss.sonatype.org",
-    Test / fork := true,
-    libraryDependencies ++= Seq(
-      "org.reactivestreams" % "reactive-streams" % "1.0.3",
-      "org.reactivestreams" % "reactive-streams-tck" % "1.0.3" % "test",
-      ("org.scalatestplus" %% "testng-6-7" % "3.2.9.0" % "test").cross(CrossVersion.for3Use2_13)
-    ),
-    OsgiKeys.exportPackage := Seq("fs2.interop.reactivestreams.*"),
-    OsgiKeys.privatePackage := Seq(),
-    OsgiKeys.importPackage := {
-      val Some((major, minor)) = CrossVersion.partialVersion(scalaVersion.value)
-      Seq(
-        s"""scala.*;version="[$major.$minor,$major.${minor + 1})"""",
-        """fs2.*;version="${Bundle-Version}"""",
-        "*"
-      )
-    },
-    OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package"),
-    osgiSettings
-  )
-  .dependsOn(coreJVM % "compile->compile;test->test")
+// lazy val reactiveStreams = project
+//   .in(file("reactive-streams"))
+//   .enablePlugins(SbtOsgi)
+//   .settings(
+//     name := "fs2-reactive-streams",
+//     mimaPreviousArtifacts := Set.empty,
+//     sonatypeCredentialHost := "s01.oss.sonatype.org",
+//     Test / fork := true,
+//     libraryDependencies ++= Seq(
+//       "org.reactivestreams" % "reactive-streams" % "1.0.3",
+//       "org.reactivestreams" % "reactive-streams-tck" % "1.0.3" % "test",
+//       ("org.scalatestplus" %% "testng-6-7" % "3.2.9.0" % "test").cross(CrossVersion.for3Use2_13)
+//     ),
+//     OsgiKeys.exportPackage := Seq("fs2.interop.reactivestreams.*"),
+//     OsgiKeys.privatePackage := Seq(),
+//     OsgiKeys.importPackage := {
+//       val Some((major, minor)) = CrossVersion.partialVersion(scalaVersion.value)
+//       Seq(
+//         s"""scala.*;version="[$major.$minor,$major.${minor + 1})"""",
+//         """fs2.*;version="${Bundle-Version}"""",
+//         "*"
+//       )
+//     },
+//     OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package"),
+//     osgiSettings
+//   )
+//   .dependsOn(coreJVM % "compile->compile;test->test")
 
-lazy val benchmark = project
-  .in(file("benchmark"))
-  .enablePlugins(JmhPlugin, NoPublishPlugin)
-  .settings(
-    name := "fs2-benchmark",
-    Test / run / javaOptions := (Test / run / javaOptions).value
-      .filterNot(o => o.startsWith("-Xmx") || o.startsWith("-Xms")) ++ Seq("-Xms256m", "-Xmx256m")
-  )
-  .dependsOn(io.jvm)
+// lazy val benchmark = project
+//   .in(file("benchmark"))
+//   .enablePlugins(JmhPlugin, NoPublishPlugin)
+//   .settings(
+//     name := "fs2-benchmark",
+//     Test / run / javaOptions := (Test / run / javaOptions).value
+//       .filterNot(o => o.startsWith("-Xmx") || o.startsWith("-Xms")) ++ Seq("-Xms256m", "-Xmx256m")
+//   )
+//   .dependsOn(io.jvm)
 
-lazy val microsite = project
-  .in(file("mdoc"))
-  .settings(
-    mdocIn := file("site"),
-    mdocOut := file("target/website"),
-    mdocVariables := Map(
-      "version" -> version.value,
-      "scalaVersions" -> crossScalaVersions.value
-        .map(v => s"- **$v**")
-        .mkString("\n")
-    ),
-    githubWorkflowArtifactUpload := false,
-    fatalWarningsInCI := false
-  )
-  .dependsOn(coreJVM, io.jvm, reactiveStreams)
-  .enablePlugins(MdocPlugin, NoPublishPlugin)
+// lazy val microsite = project
+//   .in(file("mdoc"))
+//   .settings(
+//     mdocIn := file("site"),
+//     mdocOut := file("target/website"),
+//     mdocVariables := Map(
+//       "version" -> version.value,
+//       "scalaVersions" -> crossScalaVersions.value
+//         .map(v => s"- **$v**")
+//         .mkString("\n")
+//     ),
+//     githubWorkflowArtifactUpload := false,
+//     fatalWarningsInCI := false
+//   )
+//   .dependsOn(coreJVM, io.jvm, reactiveStreams)
+//   .enablePlugins(MdocPlugin, NoPublishPlugin)
 
 // ThisBuild / githubWorkflowBuildPostamble ++= List(
 //   WorkflowStep.Sbt(
