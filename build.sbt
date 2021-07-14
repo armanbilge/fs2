@@ -325,24 +325,24 @@ ThisBuild / githubWorkflowBuildPostamble ++= List(
   )
 )
 
-ThisBuild / githubWorkflowAddedJobs += WorkflowJob(
-  id = "site",
-  name = "Deploy site",
-  needs = List("publish"),
-  javas = (ThisBuild / githubWorkflowJavaVersions).value.toList,
-  scalas = (ThisBuild / scalaVersion).value :: Nil,
-  cond = """
-  | always() &&
-  | needs.build.result == 'success' &&
-  | (needs.publish.result == 'success' && github.ref == 'refs/heads/main')
-  """.stripMargin.trim.linesIterator.mkString.some,
-  steps = githubWorkflowGeneratedDownloadSteps.value.toList :+
-    WorkflowStep.Use(
-      UseRef.Public("peaceiris", "actions-gh-pages", "v3"),
-      name = Some(s"Deploy site"),
-      params = Map(
-        "publish_dir" -> "./target/website",
-        "github_token" -> "${{ secrets.GITHUB_TOKEN }}"
-      )
-    )
-)
+// ThisBuild / githubWorkflowAddedJobs += WorkflowJob(
+//   id = "site",
+//   name = "Deploy site",
+//   needs = List("publish"),
+//   javas = (ThisBuild / githubWorkflowJavaVersions).value.toList,
+//   scalas = (ThisBuild / scalaVersion).value :: Nil,
+//   cond = """
+//   | always() &&
+//   | needs.build.result == 'success' &&
+//   | (needs.publish.result == 'success' && github.ref == 'refs/heads/main')
+//   """.stripMargin.trim.linesIterator.mkString.some,
+//   steps = githubWorkflowGeneratedDownloadSteps.value.toList :+
+//     WorkflowStep.Use(
+//       UseRef.Public("peaceiris", "actions-gh-pages", "v3"),
+//       name = Some(s"Deploy site"),
+//       params = Map(
+//         "publish_dir" -> "./target/website",
+//         "github_token" -> "${{ secrets.GITHUB_TOKEN }}"
+//       )
+//     )
+// )
