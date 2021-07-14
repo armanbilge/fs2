@@ -14,10 +14,11 @@ Global / stQuiet := true
 
 ThisBuild / baseVersion := "3.0"
 
-ThisBuild / organization := "co.fs2"
-ThisBuild / organizationName := "Functional Streams for Scala"
+ThisBuild / organization := "com.armanbilge"
+ThisBuild / organizationName := "Arman Bilge"
+ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
 
-ThisBuild / homepage := Some(url("https://github.com/typelevel/fs2"))
+ThisBuild / homepage := Some(url("https://github.com/armanbilge/fs2"))
 ThisBuild / startYear := Some(2013)
 
 val NewScala = "2.13.6"
@@ -28,7 +29,7 @@ ThisBuild / githubWorkflowJavaVersions := Seq("adopt@1.16")
 
 ThisBuild / spiewakCiReleaseSnapshots := true
 
-ThisBuild / spiewakMainBranches := List("main", "series/2.5.x")
+ThisBuild / spiewakMainBranches := List("main", "series/2.5.x", "series/armanbilge")
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("fmtCheck", "test", "mimaReportBinaryIssues")),
@@ -41,7 +42,7 @@ ThisBuild / githubWorkflowBuild := Seq(
 )
 
 ThisBuild / scmInfo := Some(
-  ScmInfo(url("https://github.com/typelevel/fs2"), "git@github.com:typelevel/fs2.git")
+  ScmInfo(url("https://github.com/armanbilge/fs2"), "git@github.com:armanbilge/fs2.git")
 )
 
 ThisBuild / licenses := List(("MIT", url("http://opensource.org/licenses/MIT")))
