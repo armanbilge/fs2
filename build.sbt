@@ -33,7 +33,7 @@ ThisBuild / spiewakCiReleaseSnapshots := true
 ThisBuild / spiewakMainBranches := List("main", "series/2.5.x", "series/armanbilge")
 
 ThisBuild / githubWorkflowBuild := Seq(
-  WorkflowStep.Sbt(List("compile"))
+  WorkflowStep.Sbt(List("Test/compile"))
   // WorkflowStep.Sbt(List("fmtCheck", "test", "mimaReportBinaryIssues")),
   // WorkflowStep.Sbt(List("coreJVM/it:test")) // Memory leak tests fail intermittently on CI
   // WorkflowStep.Run(
