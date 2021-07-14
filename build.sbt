@@ -131,80 +131,81 @@ ThisBuild / mimaBinaryIssueFilters ++= Seq(
 lazy val root = project
   .in(file("."))
   .enablePlugins(NoPublishPlugin, SonatypeCiReleasePlugin)
-  .aggregate(node)
+  .aggregate(coreJVM, coreJS, node)
 
 lazy val rootJVM = project
   .in(file("."))
   .enablePlugins(NoPublishPlugin)
+  .aggregate(coreJVM)
 lazy val rootJS =
-  project.in(file(".")).enablePlugins(NoPublishPlugin).aggregate(node)
+  project.in(file(".")).enablePlugins(NoPublishPlugin).aggregate(coreJS, node)
 
 lazy val IntegrationTest = config("it").extend(Test)
 
-// lazy val core = crossProject(JVMPlatform, JSPlatform)
-//   .in(file("core"))
-//   .configs(IntegrationTest)
-//   .settings(Defaults.itSettings: _*)
-//   .settings(
-//     inConfig(IntegrationTest)(org.scalafmt.sbt.ScalafmtPlugin.scalafmtConfigSettings)
-//   )
-//   .settings(
-//     name := "fs2-core",
-//     mimaPreviousArtifacts := Set.empty,
-//     sonatypeCredentialHost := "s01.oss.sonatype.org",
-//     Compile / scalafmt / unmanagedSources := (Compile / scalafmt / unmanagedSources).value
-//       .filterNot(_.toString.endsWith("NotGiven.scala")),
-//     Test / scalafmt / unmanagedSources := (Test / scalafmt / unmanagedSources).value
-//       .filterNot(_.toString.endsWith("NotGiven.scala"))
-//   )
-//   .settings(
-//     name := "fs2-core",
-//     libraryDependencies ++= Seq(
-//       "org.typelevel" %%% "cats-core" % "2.6.1",
-//       "org.typelevel" %%% "cats-laws" % "2.6.1" % Test,
-//       "org.typelevel" %%% "cats-effect" % "3.1.1",
-//       "org.typelevel" %%% "cats-effect-laws" % "3.1.1" % Test,
-//       "org.typelevel" %%% "cats-effect-testkit" % "3.1.1" % Test,
-//       "org.scodec" %%% "scodec-bits" % "1.1.27",
-//       "org.typelevel" %%% "scalacheck-effect-munit" % "1.0.2" % Test,
-//       "org.typelevel" %%% "munit-cats-effect-3" % "1.0.5" % Test,
-//       "org.typelevel" %%% "discipline-munit" % "1.0.9" % Test
-//     ),
-//     Compile / unmanagedSourceDirectories ++= {
-//       val major = if (isDotty.value) "-3" else "-2"
-//       List(CrossType.Pure, CrossType.Full).flatMap(
-//         _.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + major))
-//       )
-//     },
-//     Test / unmanagedSourceDirectories ++= {
-//       val major = if (isDotty.value) "-3" else "-2"
-//       List(CrossType.Pure, CrossType.Full).flatMap(
-//         _.sharedSrcDir(baseDirectory.value, "test").toList.map(f => file(f.getPath + major))
-//       )
-//     }
-//   )
+lazy val core = crossProject(JVMPlatform, JSPlatform)
+  .in(file("core"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings: _*)
+  .settings(
+    inConfig(IntegrationTest)(org.scalafmt.sbt.ScalafmtPlugin.scalafmtConfigSettings)
+  )
+  .settings(
+    name := "fs2-core",
+    mimaPreviousArtifacts := Set.empty,
+    sonatypeCredentialHost := "s01.oss.sonatype.org",
+    Compile / scalafmt / unmanagedSources := (Compile / scalafmt / unmanagedSources).value
+      .filterNot(_.toString.endsWith("NotGiven.scala")),
+    Test / scalafmt / unmanagedSources := (Test / scalafmt / unmanagedSources).value
+      .filterNot(_.toString.endsWith("NotGiven.scala"))
+  )
+  .settings(
+    name := "fs2-core",
+    libraryDependencies ++= Seq(
+      "org.typelevel" %%% "cats-core" % "2.6.1",
+      "org.typelevel" %%% "cats-laws" % "2.6.1" % Test,
+      "org.typelevel" %%% "cats-effect" % "3.1.1",
+      "org.typelevel" %%% "cats-effect-laws" % "3.1.1" % Test,
+      "org.typelevel" %%% "cats-effect-testkit" % "3.1.1" % Test,
+      "org.scodec" %%% "scodec-bits" % "1.1.27",
+      "org.typelevel" %%% "scalacheck-effect-munit" % "1.0.2" % Test,
+      "org.typelevel" %%% "munit-cats-effect-3" % "1.0.5" % Test,
+      "org.typelevel" %%% "discipline-munit" % "1.0.9" % Test
+    ),
+    Compile / unmanagedSourceDirectories ++= {
+      val major = if (isDotty.value) "-3" else "-2"
+      List(CrossType.Pure, CrossType.Full).flatMap(
+        _.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + major))
+      )
+    },
+    Test / unmanagedSourceDirectories ++= {
+      val major = if (isDotty.value) "-3" else "-2"
+      List(CrossType.Pure, CrossType.Full).flatMap(
+        _.sharedSrcDir(baseDirectory.value, "test").toList.map(f => file(f.getPath + major))
+      )
+    }
+  )
 
-// lazy val coreJVM = core.jvm
-//   .enablePlugins(SbtOsgi)
-//   .settings(
-//     Test / fork := true,
-//     OsgiKeys.exportPackage := Seq("fs2.*"),
-//     OsgiKeys.privatePackage := Seq(),
-//     OsgiKeys.importPackage := {
-//       val Some((major, minor)) = CrossVersion.partialVersion(scalaVersion.value)
-//       Seq(s"""scala.*;version="[$major.$minor,$major.${minor + 1})"""", "*")
-//     },
-//     OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package"),
-//     osgiSettings
-//   )
+lazy val coreJVM = core.jvm
+  .enablePlugins(SbtOsgi)
+  .settings(
+    Test / fork := true,
+    OsgiKeys.exportPackage := Seq("fs2.*"),
+    OsgiKeys.privatePackage := Seq(),
+    OsgiKeys.importPackage := {
+      val Some((major, minor)) = CrossVersion.partialVersion(scalaVersion.value)
+      Seq(s"""scala.*;version="[$major.$minor,$major.${minor + 1})"""", "*")
+    },
+    OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package"),
+    osgiSettings
+  )
 
-// lazy val coreJS = core.js
-//   .disablePlugins(DoctestPlugin)
-//   .settings(
-//     Test / scalaJSStage := FastOptStage,
-//     jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv(),
-//     scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
-//   )
+lazy val coreJS = core.js
+  .disablePlugins(DoctestPlugin)
+  .settings(
+    Test / scalaJSStage := FastOptStage,
+    jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv(),
+    scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule))
+  )
 
 lazy val node = project
   .in(file("node"))
