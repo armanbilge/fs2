@@ -33,13 +33,14 @@ ThisBuild / spiewakCiReleaseSnapshots := true
 ThisBuild / spiewakMainBranches := List("main", "series/2.5.x", "series/armanbilge")
 
 ThisBuild / githubWorkflowBuild := Seq(
-  WorkflowStep.Sbt(List("fmtCheck", "test", "mimaReportBinaryIssues")),
+  WorkflowStep.Sbt(List("Test/compile"))
+  // WorkflowStep.Sbt(List("fmtCheck", "test", "mimaReportBinaryIssues")),
   // WorkflowStep.Sbt(List("coreJVM/it:test")) // Memory leak tests fail intermittently on CI
-  WorkflowStep.Run(
-    List("cd scalafix", "sbt testCI"),
-    name = Some("Scalafix tests"),
-    cond = Some(s"matrix.scala == '$NewScala'")
-  )
+  // WorkflowStep.Run(
+  //   List("cd scalafix", "sbt testCI"),
+  //   name = Some("Scalafix tests"),
+  //   cond = Some(s"matrix.scala == '$NewScala'")
+  // )
 )
 
 ThisBuild / scmInfo := Some(
@@ -130,12 +131,12 @@ ThisBuild / mimaBinaryIssueFilters ++= Seq(
 lazy val root = project
   .in(file("."))
   .enablePlugins(NoPublishPlugin, SonatypeCiReleasePlugin)
-  .aggregate(coreJVM, coreJS, node, io.jvm, io.js, reactiveStreams, benchmark)
+  .aggregate(coreJVM, coreJS, node, io.jvm, io.js, reactiveStreams)
 
 lazy val rootJVM = project
   .in(file("."))
   .enablePlugins(NoPublishPlugin)
-  .aggregate(coreJVM, io.jvm, reactiveStreams, benchmark)
+  .aggregate(coreJVM, io.jvm, reactiveStreams)
 lazy val rootJS =
   project.in(file(".")).enablePlugins(NoPublishPlugin).aggregate(coreJS, node, io.js)
 
@@ -297,58 +298,58 @@ lazy val reactiveStreams = project
   )
   .dependsOn(coreJVM % "compile->compile;test->test")
 
-lazy val benchmark = project
-  .in(file("benchmark"))
-  .enablePlugins(JmhPlugin, NoPublishPlugin)
-  .settings(
-    name := "fs2-benchmark",
-    Test / run / javaOptions := (Test / run / javaOptions).value
-      .filterNot(o => o.startsWith("-Xmx") || o.startsWith("-Xms")) ++ Seq("-Xms256m", "-Xmx256m")
-  )
-  .dependsOn(io.jvm)
+// lazy val benchmark = project
+//   .in(file("benchmark"))
+//   .enablePlugins(JmhPlugin, NoPublishPlugin)
+//   .settings(
+//     name := "fs2-benchmark",
+//     Test / run / javaOptions := (Test / run / javaOptions).value
+//       .filterNot(o => o.startsWith("-Xmx") || o.startsWith("-Xms")) ++ Seq("-Xms256m", "-Xmx256m")
+//   )
+//   .dependsOn(io.jvm)
 
-lazy val microsite = project
-  .in(file("mdoc"))
-  .settings(
-    mdocIn := file("site"),
-    mdocOut := file("target/website"),
-    mdocVariables := Map(
-      "version" -> version.value,
-      "scalaVersions" -> crossScalaVersions.value
-        .map(v => s"- **$v**")
-        .mkString("\n")
-    ),
-    githubWorkflowArtifactUpload := false,
-    fatalWarningsInCI := false
-  )
-  .dependsOn(coreJVM, io.jvm, reactiveStreams)
-  .enablePlugins(MdocPlugin, NoPublishPlugin)
+// lazy val microsite = project
+//   .in(file("mdoc"))
+//   .settings(
+//     mdocIn := file("site"),
+//     mdocOut := file("target/website"),
+//     mdocVariables := Map(
+//       "version" -> version.value,
+//       "scalaVersions" -> crossScalaVersions.value
+//         .map(v => s"- **$v**")
+//         .mkString("\n")
+//     ),
+//     githubWorkflowArtifactUpload := false,
+//     fatalWarningsInCI := false
+//   )
+//   .dependsOn(coreJVM, io.jvm, reactiveStreams)
+//   .enablePlugins(MdocPlugin, NoPublishPlugin)
 
-ThisBuild / githubWorkflowBuildPostamble ++= List(
-  WorkflowStep.Sbt(
-    List("microsite/mdoc"),
-    cond = Some(s"matrix.scala == '2.13.6'")
-  )
-)
+// ThisBuild / githubWorkflowBuildPostamble ++= List(
+//   WorkflowStep.Sbt(
+//     List("microsite/mdoc"),
+//     cond = Some(s"matrix.scala == '2.13.6'")
+//   )
+// )
 
-ThisBuild / githubWorkflowAddedJobs += WorkflowJob(
-  id = "site",
-  name = "Deploy site",
-  needs = List("publish"),
-  javas = (ThisBuild / githubWorkflowJavaVersions).value.toList,
-  scalas = (ThisBuild / scalaVersion).value :: Nil,
-  cond = """
-  | always() &&
-  | needs.build.result == 'success' &&
-  | (needs.publish.result == 'success' && github.ref == 'refs/heads/main')
-  """.stripMargin.trim.linesIterator.mkString.some,
-  steps = githubWorkflowGeneratedDownloadSteps.value.toList :+
-    WorkflowStep.Use(
-      UseRef.Public("peaceiris", "actions-gh-pages", "v3"),
-      name = Some(s"Deploy site"),
-      params = Map(
-        "publish_dir" -> "./target/website",
-        "github_token" -> "${{ secrets.GITHUB_TOKEN }}"
-      )
-    )
-)
+// ThisBuild / githubWorkflowAddedJobs += WorkflowJob(
+//   id = "site",
+//   name = "Deploy site",
+//   needs = List("publish"),
+//   javas = (ThisBuild / githubWorkflowJavaVersions).value.toList,
+//   scalas = (ThisBuild / scalaVersion).value :: Nil,
+//   cond = """
+//   | always() &&
+//   | needs.build.result == 'success' &&
+//   | (needs.publish.result == 'success' && github.ref == 'refs/heads/main')
+//   """.stripMargin.trim.linesIterator.mkString.some,
+//   steps = githubWorkflowGeneratedDownloadSteps.value.toList :+
+//     WorkflowStep.Use(
+//       UseRef.Public("peaceiris", "actions-gh-pages", "v3"),
+//       name = Some(s"Deploy site"),
+//       params = Map(
+//         "publish_dir" -> "./target/website",
+//         "github_token" -> "${{ secrets.GITHUB_TOKEN }}"
+//       )
+//     )
+// )
