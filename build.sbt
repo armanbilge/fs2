@@ -152,6 +152,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .settings(
     name := "fs2-core",
     mimaPreviousArtifacts := Set.empty,
+    sonatypeCredentialHost := "s01.oss.sonatype.org",
     Compile / scalafmt / unmanagedSources := (Compile / scalafmt / unmanagedSources).value
       .filterNot(_.toString.endsWith("NotGiven.scala")),
     Test / scalafmt / unmanagedSources := (Test / scalafmt / unmanagedSources).value
@@ -212,6 +213,7 @@ lazy val node = project
   .settings(
     name := "fs2-node",
     mimaPreviousArtifacts := Set.empty,
+    sonatypeCredentialHost := "s01.oss.sonatype.org",
     scalacOptions += "-nowarn",
     Compile / doc / sources := Nil,
     Compile / packageDoc / publishArtifact := false,
@@ -241,6 +243,7 @@ lazy val io = crossProject(JVMPlatform, JSPlatform)
   .settings(
     name := "fs2-io",
     mimaPreviousArtifacts := Set.empty,
+    sonatypeCredentialHost := "s01.oss.sonatype.org",
     libraryDependencies += "com.comcast" %%% "ip4s-core" % "3.0.3",
     OsgiKeys.exportPackage := Seq("fs2.io.*"),
     OsgiKeys.privatePackage := Seq(),
@@ -273,6 +276,7 @@ lazy val reactiveStreams = project
   .settings(
     name := "fs2-reactive-streams",
     mimaPreviousArtifacts := Set.empty,
+    sonatypeCredentialHost := "s01.oss.sonatype.org",
     Test / fork := true,
     libraryDependencies ++= Seq(
       "org.reactivestreams" % "reactive-streams" % "1.0.3",
