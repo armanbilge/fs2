@@ -131,14 +131,14 @@ ThisBuild / mimaBinaryIssueFilters ++= Seq(
 lazy val root = project
   .in(file("."))
   .enablePlugins(NoPublishPlugin, SonatypeCiReleasePlugin)
-  .aggregate(coreJVM, coreJS, node)
+  .aggregate(coreJVM, coreJS, node, io.jvm, io.js)
 
 lazy val rootJVM = project
   .in(file("."))
   .enablePlugins(NoPublishPlugin)
-  .aggregate(coreJVM)
+  .aggregate(coreJVM, io.jvm)
 lazy val rootJS =
-  project.in(file(".")).enablePlugins(NoPublishPlugin).aggregate(coreJS, node)
+  project.in(file(".")).enablePlugins(NoPublishPlugin).aggregate(coreJS, node, io.js)
 
 lazy val IntegrationTest = config("it").extend(Test)
 
@@ -236,39 +236,39 @@ lazy val node = project
     osgiSettings
   )
 
-// lazy val io = crossProject(JVMPlatform, JSPlatform)
-//   .in(file("io"))
-//   .enablePlugins(SbtOsgi)
-//   .jsConfigure(_.enablePlugins(ScalaJSBundlerPlugin))
-//   .settings(
-//     name := "fs2-io",
-//     mimaPreviousArtifacts := Set.empty,
-//     sonatypeCredentialHost := "s01.oss.sonatype.org",
-//     libraryDependencies += "com.comcast" %%% "ip4s-core" % "3.0.3",
-//     OsgiKeys.exportPackage := Seq("fs2.io.*"),
-//     OsgiKeys.privatePackage := Seq(),
-//     OsgiKeys.importPackage := {
-//       val Some((major, minor)) = CrossVersion.partialVersion(scalaVersion.value)
-//       Seq(
-//         s"""scala.*;version="[$major.$minor,$major.${minor + 1})"""",
-//         """fs2.*;version="${Bundle-Version}"""",
-//         "*"
-//       )
-//     },
-//     OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package"),
-//     osgiSettings
-//   )
-//   .jvmSettings(
-//     Test / fork := true,
-//     libraryDependencies += "com.github.jnr" % "jnr-unixsocket" % "0.38.8" % Optional
-//   )
-//   .jsSettings(
-//     scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
-//     Test / npmDevDependencies += "jks-js" -> "1.0.1",
-//     useYarn := true
-//   )
-//   .dependsOn(core % "compile->compile;test->test")
-//   .jsConfigure(_.dependsOn(node))
+lazy val io = crossProject(JVMPlatform, JSPlatform)
+  .in(file("io"))
+  .enablePlugins(SbtOsgi)
+  .jsConfigure(_.enablePlugins(ScalaJSBundlerPlugin))
+  .settings(
+    name := "fs2-io",
+    mimaPreviousArtifacts := Set.empty,
+    sonatypeCredentialHost := "s01.oss.sonatype.org",
+    libraryDependencies += "com.comcast" %%% "ip4s-core" % "3.0.3",
+    OsgiKeys.exportPackage := Seq("fs2.io.*"),
+    OsgiKeys.privatePackage := Seq(),
+    OsgiKeys.importPackage := {
+      val Some((major, minor)) = CrossVersion.partialVersion(scalaVersion.value)
+      Seq(
+        s"""scala.*;version="[$major.$minor,$major.${minor + 1})"""",
+        """fs2.*;version="${Bundle-Version}"""",
+        "*"
+      )
+    },
+    OsgiKeys.additionalHeaders := Map("-removeheaders" -> "Include-Resource,Private-Package"),
+    osgiSettings
+  )
+  .jvmSettings(
+    Test / fork := true,
+    libraryDependencies += "com.github.jnr" % "jnr-unixsocket" % "0.38.8" % Optional
+  )
+  .jsSettings(
+    scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
+    Test / npmDevDependencies += "jks-js" -> "1.0.1",
+    useYarn := true
+  )
+  .dependsOn(core % "compile->compile;test->test")
+  .jsConfigure(_.dependsOn(node))
 
 // lazy val reactiveStreams = project
 //   .in(file("reactive-streams"))
