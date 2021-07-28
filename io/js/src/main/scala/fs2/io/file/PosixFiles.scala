@@ -75,7 +75,7 @@ sealed trait PosixFiles[F[_]] extends UnsealedReadFiles[F] {
 
   def readCursor(path: Path, flags: Flags = Flags.r): Resource[F, ReadCursor[F]]
 
-  def readAll(path: Path, flags: Flags = Flags.r): Stream[F, Byte]
+  def readAll(path: Path, chunkSize: Int, flags: Flags = Flags.r): Stream[F, Byte]
 
   def readlink(path: Path): F[Path]
 
@@ -325,15 +325,17 @@ object PosixFiles {
       open(path, flags).map(ReadCursor(_, 0L))
 
     override def readAll(path: Path, chunkSize: Int): Stream[F, Byte] =
-      readAll(path, Flags.r)
+      readAll(path, chunkSize, Flags.r)
 
-    override def readAll(path: Path, flags: Flags): Stream[F, Byte] =
+    override def readAll(path: Path, chunkSize: Int, flags: Flags): Stream[F, Byte] =
       readReadable(
         F.delay(
           fsMod
             .createReadStream(
               path.toJS,
-              fsMod.ReadStreamOptions().setFlags(flags.toString)
+              fsMod.ReadStreamOptions()
+                .setFlags(flags.toString)
+                .setHighWaterMark(chunkSize.toDouble)
             )
             .asInstanceOf[Readable]
         )
@@ -348,6 +350,7 @@ object PosixFiles {
               fsMod
                 .ReadStreamOptions()
                 .setFlags(Flags.r.toString)
+                .setHighWaterMark(chunkSize.toDouble)
                 .setStart(start.toDouble)
                 .setEnd((end - 1).toDouble)
             )
