@@ -19,28 +19,15 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package fs2
-package io
-package file2
-
-import fs2.internal.jsdeps.node.fsMod
-import fs2.internal.jsdeps.node.pathMod
+package fs2.io
 
 import scala.scalajs.js
 
-final class Path(override val toString: String)
-    extends PathApi {
+package object file2 {
+  
+  // type fsMod = js.Dynamic
 
-  private def withinFs(path: String): Path = new Path(path)
-
-  def resolve(name: String): Path = Path(pathMod.resolve(toString, name))
-
-  def normalize: Path = Path(pathMod.normalize(toString))
-
-}
-
-object Path extends PathCompanionApi {
-
-  def apply(path: String): Path = new Path(path)
+  // Use this one in the ide for typings
+  // type fsMod = fs2.internal.jsdeps.node.nodeFsMod
 
 }
