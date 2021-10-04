@@ -59,6 +59,14 @@ private[io] trait compressionplatform {
         val options = zlibMod
           .ZlibOptions()
           .setChunkSize(inflateParams.bufferSizeOrMinimum.toDouble)
+        Stream.resource(suspendReadableAndRead() {
+          (inflateParams.header match {
+            case ZLibParams.Header.GZIP => zlibMod.createGunzip(options)
+            case ZLibParams.Header.ZLIB => zlibMod.createInflate(options)
+          }).asInstanceOf[Duplex]
+        }).flatMap { case (inflate, out) =>
+          out.concurrently(in.through(writeWritable[F](inflate.pure.widen))).on
+        }
         Stream
           .bracket(F.delay(inflateParams.header match {
             case ZLibParams.Header.GZIP => zlibMod.createGunzip(options)
@@ -66,6 +74,7 @@ private[io] trait compressionplatform {
           }))(z => F.async_(cb => z.close(() => cb(Right(())))))
           .flatMap { _inflate =>
             val inflate = _inflate.asInstanceOf[Duplex].pure
+            suspendReadableAndRead()()
             Stream
               .resource(readReadableResource[F](inflate.widen))
               .flatMap(_.concurrently(in.through(writeWritable[F](inflate.widen))))
