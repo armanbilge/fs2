@@ -253,16 +253,18 @@ lazy val coreJS = core.js
 
 lazy val node = crossProject(JSPlatform)
   .in(file("node"))
-  .enablePlugins(ScalablyTypedConverterGenSourcePlugin)
+  .enablePlugins(ScalablyTypedConverterExternalNpmPlugin)
   .settings(
     name := "fs2-node",
     mimaPreviousArtifacts := Set.empty,
     scalacOptions += "-nowarn",
     Compile / doc / sources := Nil,
     scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
-    Compile / npmDevDependencies += "@types/node" -> "16.7.13",
-    useYarn := true,
-    yarnExtraArgs += "--frozen-lockfile",
+    externalNpm := {
+      import scala.sys.process._
+      Process("yarn", baseDirectory.value).!
+      baseDirectory.value
+    },
     stOutputPackage := "fs2.internal.jsdeps",
     stPrivateWithin := Some("fs2"),
     stStdlib := List("es2020"),
