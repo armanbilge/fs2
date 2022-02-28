@@ -12,8 +12,9 @@ As described in the `README` file, FS2 is based mostly on `cats` and `cats-effec
 
 ### Libraries using FS2, and integrations with data stores
 
-If you have a project you'd like to include in this list, either [click here](https://github.com/functional-streams-for-scala/fs2/edit/main/site/docs/ecosystem.md) or let us know in [the gitter channel](https://gitter.im/functional-streams-for-scala/fs2) and we'll add it for you.
+If you have a project you'd like to include in this list, either [click here](https://github.com/typelevel/fs2/edit/main/site/ecosystem.md) or let us know in [the gitter channel](https://gitter.im/functional-streams-for-scala/fs2) and we'll add it for you.
 
+* [cabbit](https://github.com/delimobil/cabbit): Simple client for RabbitMQ using fs2 and cats-effect.
 * [canoe](https://github.com/augustjune/canoe): A purely functional library for building Telegram chatbots.
 * [chromaprint](https://github.com/mgdigital/Chromaprint.scala): A Scala implementation of the Chromaprint/AcoustID audio fingerprinting algorithm, built with fs2 streams / Cats Effect.
 * [circe-fs2](https://github.com/circe/circe-fs2): Streaming JSON manipulation with [circe](https://github.com/circe/circe).
@@ -41,6 +42,7 @@ If you have a project you'd like to include in this list, either [click here](ht
 * [fs2-rabbit](https://fs2-rabbit.profunktor.dev/): RabbitMQ stream-based client built on top of fs2 and cats effect.
 * [fs2-reactive-streams](https://github.com/zainab-ali/fs2-reactive-streams): A reactive streams implementation for fs2.
 * [fs2-ssh](https://github.com/slamdata/fs2-ssh): A wrapper around Apache SSHD targeting cats-effect and fs2.
+* [fs2-throttler](https://github.com/kovstas/fs2-throttler): Throttling for fs2 based on the token bucket algorithm.
 * [fs2-zk](https://github.com/Spinoco/fs2-zk): Simple Apache Zookeeper bindings for fs2.
 * [http4s](http://http4s.org/): Minimal, idiomatic Scala interface for HTTP services using fs2.
 * [mongo4cats](https://github.com/Kirill5k/mongo4cats): Mongo DB Scala client wrapper for Cats Effect & FS2.
@@ -60,4 +62,4 @@ If you have a project you'd like to include in this list, either [click here](ht
 * [upperbound](https://github.com/SystemFw/upperbound): A purely functional, interval-based rate limiter with support for backpressure.
 * [vinyldns](https://github.com/vinyldns/vinyldns): A DNS governance system using fs2 for throttling updates to DNS backends.
 
-Don't see your project on the list? [Click here](https://github.com/functional-streams-for-scala/fs2/edit/main/site/docs/ecosystem.md) to add it!
+Don't see your project on the list? [Click here](https://github.com/typelevel/fs2/edit/main/site/ecosystem.md) to add it!
