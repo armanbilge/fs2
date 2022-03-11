@@ -164,6 +164,7 @@ ThisBuild / mimaBinaryIssueFilters ++= Seq(
 lazy val root = tlCrossRootProject
   .aggregate(
     core,
+    ioJdk16,
     io,
     node,
     scodec,
@@ -234,13 +235,24 @@ lazy val node = crossProject(JSPlatform)
     stIncludeDev := true
   )
 
+lazy val ioJdk16 = project
+  .in(file("io-jdk16"))
+  .settings(
+    name := "fs2-io-jdk16",
+    tlVersionIntroduced := List("2.12", "2.13", "3").map(_ -> "3.2.6").toMap,
+    libraryDependencies ++= Seq(
+      "org.typelevel" %%% "cats-effect-kernel" % "3.3.6"
+    )
+  )
+
 lazy val io = crossProject(JVMPlatform, JSPlatform)
   .in(file("io"))
   .jsEnablePlugins(ScalaJSBundlerPlugin)
   .settings(
     name := "fs2-io",
     libraryDependencies += "com.comcast" %%% "ip4s-core" % "3.1.2",
-    tlVersionIntroduced ~= { _.updated("3", "3.1.0") }
+    tlVersionIntroduced ~= { _.updated("3", "3.1.0") },
+    tlJdkRelease := Some(8)
   )
   .jvmSettings(
     Test / fork := true,
@@ -249,6 +261,7 @@ lazy val io = crossProject(JVMPlatform, JSPlatform)
       "com.google.jimfs" % "jimfs" % "1.2" % Test
     )
   )
+  .jvmConfigure(_.dependsOn(ioJdk16))
   .jsSettings(
     tlVersionIntroduced := List("2.12", "2.13", "3").map(_ -> "3.1.0").toMap,
     scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),

@@ -209,15 +209,7 @@ private[tls] trait TLSContextCompanionPlatform { self: TLSContext.type =>
               engine.setUseClientMode(clientMode)
               engine.setSSLParameters(params.toSSLParameters)
               params.handshakeApplicationProtocolSelector
-                .foreach { f =>
-                  import fs2.io.CollectionCompat._
-                  engine.setHandshakeApplicationProtocolSelector(
-                    new BiFunction[SSLEngine, java.util.List[String], String] {
-                      def apply(engine: SSLEngine, protocols: java.util.List[String]): String =
-                        f(engine, protocols.asScala.toList)
-                    }
-                  )
-                }
+                .foreach(Jdk9TlsParameters.setHandshakeApplicationProtocolSelector(engine, _))
               engine
             }
             sslEngine.flatMap(TLSEngine[F](_, binding, logger))
