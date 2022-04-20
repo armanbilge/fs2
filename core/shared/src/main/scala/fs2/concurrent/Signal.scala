@@ -49,6 +49,21 @@ trait Signal[F[_], A] {
     */
   def get: F[A]
 
+  /** Converts this signal to signal of `B` by applying `f`.
+    */
+  def map[B](f: A => B)(implicit F: Functor[F]): Signal[F, B] =
+    Signal.mapped(this)(f)
+
+  /** Interrupts the supplied `Stream` when this `Signal` is `true`.
+    */
+  def interrupt[B](s: Stream[F, B])(implicit F: Concurrent[F], ev: A <:< Boolean): Stream[F, B] =
+    s.interruptWhen(map(ev))
+
+  /** Predicates the supplied effect `f` on this `Signal` being `true`.
+    */
+  def predicate[B](f: F[B])(implicit F: Monad[F], ev: A <:< Boolean): F[Unit] =
+    get.flatMap(a => f.whenA(ev(a)))
+
   /** Returns when the condition becomes true, semantically blocking
     * in the meantime.
     *
@@ -124,7 +139,11 @@ object Signal extends SignalInstances {
       def get: F[B] = Functor[F].map(fa.get)(f)
     }
 
-  implicit class SignalOps[F[_], A](val self: Signal[F, A]) extends AnyVal {
+  @deprecated("Added for bincompat", "3.2.8")
+  def SignalOps[F[_], A](self: Signal[F, A]): SignalOps[F, A] = new SignalOps(self)
+
+  @deprecated("Ops moved to Signal", "3.2.8")
+  class SignalOps[F[_], A](val self: Signal[F, A]) extends AnyVal {
 
     /** Converts this signal to signal of `B` by applying `f`.
       */
@@ -132,7 +151,13 @@ object Signal extends SignalInstances {
       Signal.mapped(self)(f)
   }
 
-  implicit class BooleanSignalOps[F[_]](val self: Signal[F, Boolean]) extends AnyVal {
+  @deprecated("Added for bincompat", "3.2.8")
+  def BooleanSignalOps[F[_]](self: Signal[F, Boolean]): BooleanSignalOps[F] = new BooleanSignalOps(
+    self
+  )
+
+  @deprecated("Ops moved to Signal", "3.2.8")
+  class BooleanSignalOps[F[_]](val self: Signal[F, Boolean]) extends AnyVal {
 
     /** Interrupts the supplied `Stream` when this `Signal` is `true`.
       */
