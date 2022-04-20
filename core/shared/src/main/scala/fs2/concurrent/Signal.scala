@@ -152,9 +152,8 @@ object Signal extends SignalInstances {
   }
 
   @deprecated("Added for bincompat", "3.2.8")
-  def BooleanSignalOps[F[_]](self: Signal[F, Boolean]): BooleanSignalOps[F] = new BooleanSignalOps(
-    self
-  )
+  def BooleanSignalOps[F[_]](self: Signal[F, Boolean]): BooleanSignalOps[F] =
+    new BooleanSignalOps(self)
 
   @deprecated("Ops moved to Signal", "3.2.8")
   class BooleanSignalOps[F[_]](val self: Signal[F, Boolean]) extends AnyVal {
