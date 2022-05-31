@@ -343,7 +343,7 @@ lazy val benchmark = project
     Test / run / javaOptions := (Test / run / javaOptions).value
       .filterNot(o => o.startsWith("-Xmx") || o.startsWith("-Xms")) ++ Seq("-Xms256m", "-Xmx256m")
   )
-  .dependsOn(io.jvm)
+  .dependsOn(io.jvm % "compile,test->compile")
 
 lazy val microsite = project
   .in(file("mdoc"))
