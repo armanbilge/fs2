@@ -4,9 +4,10 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 
 ThisBuild / tlBaseVersion := "3.2"
 
-ThisBuild / organization := "co.fs2"
+ThisBuild / organization := "com.armanbilge"
 ThisBuild / organizationName := "Functional Streams for Scala"
 ThisBuild / startYear := Some(2013)
+ThisBuild / tlSonatypeUseLegacyHost := false
 
 val NewScala = "2.13.8"
 
@@ -172,9 +173,11 @@ lazy val root = tlCrossRootProject
     benchmark
   )
 
+ThisBuild / resolvers += "s01" at "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+
 lazy val IntegrationTest = config("it").extend(Test)
 
-lazy val core = crossProject(JVMPlatform, JSPlatform)
+lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("core"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings: _*)
@@ -186,15 +189,15 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
   .settings(
     name := "fs2-core",
     libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-core" % "2.7.0",
-      "org.typelevel" %%% "cats-laws" % "2.7.0" % Test,
-      "org.typelevel" %%% "cats-effect" % "3.3.12",
-      "org.typelevel" %%% "cats-effect-laws" % "3.3.12" % Test,
-      "org.typelevel" %%% "cats-effect-testkit" % "3.3.12" % Test,
+      "org.typelevel" %%% "cats-core" % "2.8.0",
+      // "org.typelevel" %%% "cats-laws" % "2.8.0" % Test,
+      "com.armanbilge" %%% "cats-effect" % "3.4-904a40b-SNAPSHOT",
+      // "org.typelevel" %%% "cats-effect-laws" % "3.4-904a40b-SNAPSHOT" % Test,
+      // "org.typelevel" %%% "cats-effect-testkit" % "3.4-904a40b-SNAPSHOT" % Test,
       "org.scodec" %%% "scodec-bits" % "1.1.34",
-      "org.typelevel" %%% "scalacheck-effect-munit" % "1.0.4" % Test,
-      "org.typelevel" %%% "munit-cats-effect-3" % "1.0.7" % Test,
-      "org.typelevel" %%% "discipline-munit" % "1.0.9" % Test
+      // "org.typelevel" %%% "scalacheck-effect-munit" % "1.0.4" % Test,
+      // "org.typelevel" %%% "munit-cats-effect-3" % "1.0.7" % Test,
+      // "org.typelevel" %%% "discipline-munit" % "1.0.9" % Test
     ),
     tlJdkRelease := Some(8),
     Compile / doc / scalacOptions ++= (if (scalaVersion.value.startsWith("2.")) Seq("-nowarn")
