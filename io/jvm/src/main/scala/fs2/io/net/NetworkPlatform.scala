@@ -67,7 +67,7 @@ private[net] trait NetworkPlatform[F[_]] {
 }
 
 private[net] trait NetworkCompanionPlatform { self: Network.type =>
-  private lazy val globalAcg = AsynchronousChannelGroup.withFixedThreadPool(
+  private[net] lazy val globalAcg = AsynchronousChannelGroup.withFixedThreadPool(
     1,
     ThreadFactories.named("fs2-global-tcp", true)
   )

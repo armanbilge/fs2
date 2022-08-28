@@ -22,29 +22,41 @@
 package fs2.io.net.unixsocket
 
 import cats.effect.kernel.Async
-import java.net.{StandardProtocolFamily, UnixDomainSocketAddress}
-import java.nio.channels.{ServerSocketChannel, SocketChannel}
+import cats.effect.kernel.Resource
+import fs2.Stream
+import fs2.io.net.AsyncChannelHelpers
+import fs2.io.net.Network
+import fs2.io.net.Socket
+
+import java.net.StandardProtocolFamily
+import java.net.UnixDomainSocketAddress
+import java.nio.channels.AsynchronousChannelGroup
 
 object JdkUnixSockets {
 
   def supported: Boolean = StandardProtocolFamily.values.size > 2
 
   implicit def forAsync[F[_]: Async]: UnixSockets[F] =
-    new JdkUnixSocketsImpl[F]
+    new JdkUnixSocketsImpl[F](Network.globalAcg)
 }
 
-private[unixsocket] class JdkUnixSocketsImpl[F[_]](implicit F: Async[F])
-    extends UnixSockets.AsyncUnixSockets[F] {
-  protected def openChannel(address: UnixSocketAddress) = F.delay {
-    val ch = SocketChannel.open(StandardProtocolFamily.UNIX)
-    ch.connect(UnixDomainSocketAddress.of(address.path))
-    ch
-  }
+private[unixsocket] class JdkUnixSocketsImpl[F[_]](channelGroup: AsynchronousChannelGroup)(implicit
+    F: Async[F]
+) extends UnixSockets[F] {
 
-  protected def openServerChannel(address: UnixSocketAddress) = F.blocking {
-    val serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
-    serverChannel.configureBlocking(false)
-    serverChannel.bind(UnixDomainSocketAddress.of(address.path))
-    (F.blocking(serverChannel.accept()), F.blocking(serverChannel.close()))
-  }
+  override def client(address: UnixSocketAddress): Resource[F, Socket[F]] =
+    AsyncChannelHelpers.client(channelGroup, F.delay(UnixDomainSocketAddress.of(address.path)), Nil)
+
+  override def server(
+      address: UnixSocketAddress,
+      deleteIfExists: Boolean,
+      deleteOnClose: Boolean
+  ): fs2.Stream[F, Socket[F]] =
+    Stream
+      .resource(
+        AsyncChannelHelpers
+          .serverResource(channelGroup, UnixDomainSocketAddress.of(address.path), Nil)
+      )
+      .flatMap(_._2)
+
 }
