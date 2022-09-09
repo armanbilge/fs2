@@ -160,7 +160,15 @@ ThisBuild / mimaBinaryIssueFilters ++= Seq(
   ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.ChunkCompanionPlatform.makeArrayBuilder"),
   ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.concurrent.Channel.trySend"),
   ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.compression.Compression.gunzip"),
-  ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.io.net.tls.TLSContext#Builder.insecure")
+  ProblemFilters.exclude[ReversedMissingMethodProblem](
+    "fs2.io.net.tls.TLSContext#Builder.insecure"
+  ),
+  ProblemFilters.exclude[DirectMissingMethodProblem](
+    "fs2.io.net.SocketGroupCompanionPlatform#AsyncSocketGroup.this"
+  ),
+  ProblemFilters.exclude[DirectMissingMethodProblem](
+    "fs2.io.net.DatagramSocketGroupCompanionPlatform#AsyncDatagramSocketGroup.this"
+  )
 )
 
 lazy val root = tlCrossRootProject

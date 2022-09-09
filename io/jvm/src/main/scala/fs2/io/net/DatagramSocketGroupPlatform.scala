@@ -34,11 +34,21 @@ import com.comcast.ip4s._
 private[net] trait DatagramSocketGroupCompanionPlatform {
   type ProtocolFamily = java.net.ProtocolFamily
 
-  def unsafe[F[_]: Async](adsg: AsynchronousDatagramSocketGroup): DatagramSocketGroup[F] =
+  private[net] def unsafe[F[_]: Async: Dns](
+      adsg: AsynchronousDatagramSocketGroup
+  ): DatagramSocketGroup[F] =
     new AsyncDatagramSocketGroup(adsg)
 
-  private final class AsyncDatagramSocketGroup[F[_]: Async](adsg: AsynchronousDatagramSocketGroup)
-      extends DatagramSocketGroup[F] {
+  @deprecated("Use overload with implicit Dns", "3.2.15")
+  private[net] def unsafe[F[_]](
+      adsg: AsynchronousDatagramSocketGroup,
+      F: Async[F]
+  ): DatagramSocketGroup[F] =
+    unsafe(adsg)(F, Dns.forSync(F))
+
+  private final class AsyncDatagramSocketGroup[F[_]: Async: Dns](
+      adsg: AsynchronousDatagramSocketGroup
+  ) extends DatagramSocketGroup[F] {
     def openDatagramSocket(
         address: Option[Host],
         port: Option[Port],
