@@ -150,7 +150,7 @@ private[tls] object S2nConnection {
                 F.delay {
                   readTasks.set(F.unit)
                   val blocked = stackalloc[s2n_blocked_status]()
-                  println("attempting to s2n_recv")
+                  println(s"attempting to s2n_recv want: ${n - i}")
                   val readed = guard(s2n_recv(conn, buf + i, n - i, blocked))
                   println(s"finished s2n_recv with blocked=${!blocked} readed=$readed")
                   (!blocked, Math.max(readed, 0))
@@ -250,6 +250,7 @@ private[tls] object S2nConnection {
 
     read match {
       case Some(bytes) if bytes.nonEmpty =>
+        println(s"recv found ${bytes.size} waiting")
         bytes.copyToPtr(buf, 0)
         bytes.length.toInt
       case Some(_) =>
