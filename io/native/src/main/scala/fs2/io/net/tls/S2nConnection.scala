@@ -150,7 +150,9 @@ private[tls] object S2nConnection {
                 F.delay {
                   readTasks.set(F.unit)
                   val blocked = stackalloc[s2n_blocked_status]()
+                  println("attempting to s2n_recv")
                   val readed = guard(s2n_recv(conn, buf + i, n - i, blocked))
+                  println(s"finished s2n_recv with blocked=${!blocked} readed=$readed")
                   (!blocked, Math.max(readed, 0))
                 }.guaranteeCase { oc =>
                   blindingSleep.whenA(oc.isError)
@@ -239,6 +241,7 @@ private[tls] object S2nConnection {
   )
 
   private def recvCallback[F[_]](ioContext: Ptr[Byte], buf: Ptr[Byte], len: CUnsignedInt): CInt = {
+    println("entered the recv callback")
     val ctx = fromPtr[RecvCallbackContext[F]](ioContext)
     import ctx._
     implicit val F = async
