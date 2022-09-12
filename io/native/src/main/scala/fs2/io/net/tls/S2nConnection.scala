@@ -251,7 +251,14 @@ private[tls] object S2nConnection {
         bytes.length.toInt
       case Some(_) =>
         val readTask =
-          socket.read(len.toInt).flatMap(b => F.delay(readBuffer.set(b.map(_.toByteVector)))).void
+          F.delay(println(s"beginning read task of ${len}")) *>
+            socket
+              .read(len.toInt)
+              .flatTap(b => F.delay(println(s"finished read task of ${len} got ${b.map(_.size)}")))
+              .flatMap(b => F.delay(readBuffer.set(b.map(_.toByteVector))))
+              .void
+
+        println(s"adding read task of ${len}")
         readTasks.getAndUpdate(_ *> readTask)
         libc.errno.errno = posix.errno.EWOULDBLOCK
         S2N_FAILURE
