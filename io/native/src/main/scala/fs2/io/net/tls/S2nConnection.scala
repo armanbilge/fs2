@@ -165,7 +165,7 @@ private[tls] object S2nConnection {
                       else
                         F.pure(None)
                     } else go(total)
-                    log(s"read blocked status: ${blocked}") *> continue
+                    log(s"read blocked status: ${blocked}") *> F.sleep(1.second) *> continue
                   }
               go(0)
             }
