@@ -61,7 +61,8 @@ private[tls] object S2nConnection {
       socket: Socket[F],
       clientMode: Boolean,
       config: S2nConfig,
-      parameters: TLSParameters
+      parameters: TLSParameters,
+      logger: TLSLogger[F]
   )(implicit F: Async[F]): Resource[F, S2nConnection[F]] =
     for {
       gcRoot <- mkGcRoot
@@ -112,6 +113,14 @@ private[tls] object S2nConnection {
 
     } yield new S2nConnection[F] {
 
+      private val doLog: (() => String) => F[Unit] =
+        logger match {
+          case e: TLSLogger.Enabled[_] => msg => e.log(msg())
+          case TLSLogger.Disabled      => _ => F.unit
+        }
+
+      private def log(msg: => String): F[Unit] = doLog(() => msg)
+
       def handshake =
         F.delay {
           readTasks.set(F.unit)
@@ -134,28 +143,31 @@ private[tls] object S2nConnection {
           F.delay(guard_(s2n_connection_free_handshake(conn)))
 
       def read(n: Long) = zone.use { implicit z =>
-        F.delay(alloc[Byte](n)).flatMap { buf =>
-          def go(i: Long): F[Option[Chunk[Byte]]] =
-            F.delay {
-              readTasks.set(F.unit)
-              val blocked = stackalloc[s2n_blocked_status]()
-              val readed = guard(s2n_recv(conn, buf + i, n - i, blocked))
-              (!blocked, Math.max(readed, 0))
-            }.guaranteeCase { oc =>
-              blindingSleep.whenA(oc.isError)
-            }.productL(F.delay(readTasks.get).flatten)
-              .flatMap { case (blocked, readed) =>
-                val total = i + readed
-                if (blocked.toInt == S2N_NOT_BLOCKED) {
-                  if (total > 0)
-                    F.pure(Some(Chunk.byteVector(ByteVector.fromPtr(buf, total))))
-                  else
-                    F.pure(None)
-                } else go(total)
-              }
-          go(0)
-        }
-
+        log(s"starting read $n") *>
+          F.delay(alloc[Byte](n))
+            .flatMap { buf =>
+              def go(i: Long): F[Option[Chunk[Byte]]] =
+                F.delay {
+                  readTasks.set(F.unit)
+                  val blocked = stackalloc[s2n_blocked_status]()
+                  val readed = guard(s2n_recv(conn, buf + i, n - i, blocked))
+                  (!blocked, Math.max(readed, 0))
+                }.guaranteeCase { oc =>
+                  blindingSleep.whenA(oc.isError)
+                }.productL(F.delay(readTasks.get).flatten)
+                  .flatMap { case (blocked, readed) =>
+                    val total = i + readed
+                    val continue: F[Option[Chunk[Byte]]] = if (blocked.toInt == S2N_NOT_BLOCKED) {
+                      if (total > 0)
+                        F.pure(Some(Chunk.byteVector(ByteVector.fromPtr(buf, total))))
+                      else
+                        F.pure(None)
+                    } else go(total)
+                    log(s"read blocked status: ${blocked}") *> continue
+                  }
+              go(0)
+            }
+            .flatTap(c => log(s"ending read wanted $n got ${c.map(_.size)}"))
       }
 
       def write(bytes: Chunk[Byte]) = zone.use { implicit z =>
