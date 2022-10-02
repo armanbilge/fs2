@@ -65,16 +65,18 @@ private[net] trait SocketGroupCompanionPlatform { self: SocketGroup.type =>
           )
           .evalTap(setSocketOptions(options))
         socket <- Socket.forAsync(sock)
-        _ <- F
-          .async[Unit] { cb =>
-            sock
-              .registerOneTimeListener[F, js.Error]("error") { error =>
-                cb(Left(js.JavaScriptException(error)))
-              } <* F.delay {
-              sock.connect(to.port.value, to.host.toString, () => cb(Right(())))
+        _ <- Resource.eval {
+          to.resolve[F] { to =>
+            F.async[Unit] { cb =>
+              sock
+                .registerOneTimeListener[F, js.Error]("error") { error =>
+                  cb(Left(js.JavaScriptException(error)))
+                } <* F.delay {
+                sock.connect(to.port.value, to.host.toString, () => cb(Right(())))
+              }
             }
           }
-          .toResource
+        }
       } yield socket).adaptError { case IOException(ex) => ex }
 
     override def serverResource(
@@ -105,22 +107,23 @@ private[net] trait SocketGroupCompanionPlatform { self: SocketGroup.type =>
               F.delay(cb(Right(()))).as(None)
           }
         )
-        _ <- F
-          .async[Unit] { cb =>
-            server.registerOneTimeListener[F, js.Error]("error") { e =>
-              cb(Left(js.JavaScriptException(e)))
-            } <* F.delay {
-              address match {
-                case Some(host) =>
-                  server.listen(port.fold(0)(_.value), host.toString, () => cb(Right(())))
-                case None =>
-                  server.listen(port.fold(0)(_.value), () => cb(Right(())))
+        _ <- Resource.eval {
+          address.traverse(_.resolve[F]).flatMap { address =>
+            F.async[Unit] { cb =>
+              server.registerOneTimeListener[F, js.Error]("error") { e =>
+                cb(Left(js.JavaScriptException(e)))
+              } <* F.delay {
+                address match {
+                  case Some(host) =>
+                    server.listen(port.fold(0)(_.value), host.toString, () => cb(Right(())))
+                  case None =>
+                    server.listen(port.fold(0)(_.value), () => cb(Right(())))
+                }
+
               }
-
             }
-
           }
-          .toResource
+        }
         ipAddress <- F.delay {
           val info = server.address()
           SocketAddress(IpAddress.fromString(info.address).get, Port.fromInt(info.port).get)
