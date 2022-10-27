@@ -3792,7 +3792,7 @@ object Stream extends StreamLowPriority {
     * }}}
     */
   def unfoldChunk[F[x] >: Pure[x], S, O](s: S)(f: S => Option[(Chunk[O], S)]): Stream[F, O] =
-    unfold(s)(f).flatMap(chunk)
+    unfold(s)(f).unchunks
 
   /** Like [[unfold]], but takes an effectful function. */
   def unfoldEval[F[_], S, O](s: S)(f: S => F[Option[(O, S)]]): Stream[F, O] = {
@@ -4167,7 +4167,7 @@ object Stream extends StreamLowPriority {
                 signalResult(fiber)
             }
             .flatMap { _ =>
-              output.stream.flatMap(Stream.chunk)
+              output.stream.unchunks
             }
         }
 
