@@ -49,7 +49,8 @@ trait Signal[F[_], A] {
     */
   def get: F[A]
 
-  def getAndUpdates: F[(A, Stream[F, A])]
+  def getAndUpdates(implicit F: Functor[F]): F[(A, Stream[F, A])] =
+    get.map((_, discrete.drop(1)))
 
   /** Returns when the condition becomes true, semantically blocking
     * in the meantime.
@@ -117,7 +118,7 @@ object Signal extends SignalInstances {
       def get: F[A] = F.pure(a)
       def continuous: Stream[Pure, A] = Stream.constant(a)
       def discrete: Stream[F, A] = Stream(a) ++ Stream.never
-      def getAndUpdates = F.pure(a, Stream.never)
+      override def getAndUpdates(implicit functor: Functor[F]) = F.pure(a, Stream.never)
     }
 
   @deprecated("Use overload with Spawn constraint", "3.4.0")
@@ -128,8 +129,9 @@ object Signal extends SignalInstances {
       def continuous: Stream[F, B] = fa.continuous.map(f)
       def discrete: Stream[F, B] = fa.discrete.map(f)
       def get: F[B] = Functor[F].map(fa.get)(f)
-      def getAndUpdates = fa.getAndUpdates.map { case (a, updates) =>
-        (f(a), updates.map(f))
+      override def getAndUpdates(implicit F: Functor[F]) = F.map(fa.getAndUpdates(F)) {
+        case (a, updates) =>
+          (f(a), updates.map(f))
       }
     }
 
@@ -233,7 +235,7 @@ object SignallingRef {
             Stream.emit(a) ++ tail
           }
 
-          override def getAndUpdates = {
+          override def getAndUpdates(implicit functor: Functor[F]) = {
             def go(id: Long, lastSeen: Long): Stream[F, A] = {
               def getNext: F[(A, Long)] =
                 F.deferred[(A, Long)].flatMap { wait =>
@@ -307,8 +309,9 @@ object SignallingRef {
           def get: F[B] = fa.get.map(f)
           def discrete: Stream[F, B] = fa.discrete.map(f)
           def continuous: Stream[F, B] = fa.continuous.map(f)
-          def getAndUpdates = fa.getAndUpdates.map { case (a, updates) =>
-            (f(a), updates.map(f))
+          override def getAndUpdates(implicit F: Functor[F]) = F.map(fa.getAndUpdates(F)) {
+            case (a, updates) =>
+              (f(a), updates.map(f))
           }
           def set(b: B): F[Unit] = fa.set(g(b))
           def access: F[(B, B => F[Boolean])] =
@@ -371,10 +374,10 @@ private[concurrent] trait SignalInstances extends SignalLowPriorityInstances {
 
           def get: F[B] = ff.get.ap(fa.get)
 
-          def getAndUpdates = (ff.getAndUpdates, fa.getAndUpdates).mapN {
-            case ((f, fupdates), (a, aupdates)) =>
+          override def getAndUpdates(implicit F: Functor[F]) =
+            (ff.getAndUpdates, fa.getAndUpdates).mapN { case ((f, fupdates), (a, aupdates)) =>
               (f(a), nondeterministicZip(fupdates, aupdates).map { case (f, a) => f(a) })
-          }
+            }
         }
     }
   }
