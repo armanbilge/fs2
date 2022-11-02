@@ -49,6 +49,8 @@ trait Signal[F[_], A] {
     */
   def get: F[A]
 
+  def getAndUpdates: F[(A, Stream[F, A])]
+
   /** Returns when the condition becomes true, semantically blocking
     * in the meantime.
     *
@@ -115,6 +117,7 @@ object Signal extends SignalInstances {
       def get: F[A] = F.pure(a)
       def continuous: Stream[Pure, A] = Stream.constant(a)
       def discrete: Stream[F, A] = Stream(a) ++ Stream.never
+      def getAndUpdates = F.pure(a, Stream.never)
     }
 
   def mapped[F[_]: Functor, A, B](fa: Signal[F, A])(f: A => B): Signal[F, B] =
@@ -122,6 +125,9 @@ object Signal extends SignalInstances {
       def continuous: Stream[F, B] = fa.continuous.map(f)
       def discrete: Stream[F, B] = fa.discrete.map(f)
       def get: F[B] = Functor[F].map(fa.get)(f)
+      def getAndUpdates = fa.getAndUpdates.map { case (a, updates) =>
+        (f(a), updates.map(f))
+      }
     }
 
   implicit class SignalOps[F[_], A](val self: Signal[F, A]) extends AnyVal {
@@ -220,7 +226,11 @@ object SignallingRef {
 
           def continuous: Stream[F, A] = Stream.repeatEval(get)
 
-          def discrete: Stream[F, A] = {
+          def discrete = Stream.eval(getAndUpdates).flatMap { case (a, tail) =>
+            Stream.emit(a) ++ tail
+          }
+
+          override def getAndUpdates = {
             def go(id: Long, lastSeen: Long): Stream[F, A] = {
               def getNext: F[(A, Long)] =
                 F.deferred[(A, Long)].flatMap { wait =>
@@ -240,11 +250,11 @@ object SignallingRef {
             def cleanup(id: Long): F[Unit] =
               state.update(s => s.copy(listeners = s.listeners - id))
 
-            Stream.bracket(newId)(cleanup).flatMap { id =>
-              Stream.eval(state.get).flatMap { state =>
-                Stream.emit(state.value) ++ go(id, state.lastUpdate)
-              }
+            state.get.map { state =>
+              val updates = Stream.bracket(newId)(cleanup).flatMap(go(_, state.lastUpdate))
+              (state.value, updates)
             }
+
           }
 
           def set(a: A): F[Unit] = update(_ => a)
@@ -294,6 +304,9 @@ object SignallingRef {
           def get: F[B] = fa.get.map(f)
           def discrete: Stream[F, B] = fa.discrete.map(f)
           def continuous: Stream[F, B] = fa.continuous.map(f)
+          def getAndUpdates = fa.getAndUpdates.map { case (a, updates) =>
+            (f(a), updates.map(f))
+          }
           def set(b: B): F[Unit] = fa.set(g(b))
           def access: F[(B, B => F[Boolean])] =
             fa.access.map { case (getter, setter) =>
@@ -354,6 +367,11 @@ private[concurrent] trait SignalInstances extends SignalLowPriorityInstances {
           def continuous: Stream[F, B] = Stream.repeatEval(get)
 
           def get: F[B] = ff.get.ap(fa.get)
+
+          def getAndUpdates = (ff.getAndUpdates, fa.getAndUpdates).mapN {
+            case ((f, fupdates), (a, aupdates)) =>
+              (f(a), nondeterministicZip(fupdates, aupdates).map { case (f, a) => f(a) })
+          }
         }
     }
   }
