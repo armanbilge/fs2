@@ -1439,10 +1439,7 @@ final class Stream[+F[_], +O] private[fs2] (private[fs2] val underlying: Pull[F,
 
         val dequeueNextOutput: F2[Option[Vector[O]]] = {
           // Trigger: waits until the supply buffer is full (with acquireN)
-          val waitSupply = supply.acquireN(outputLong).guaranteeCase {
-            case Outcome.Succeeded(_) => supply.releaseN(outputLong)
-            case _                    => F.unit
-          }
+          val waitSupply = supply.acquireN(outputLong)
 
           val onTimeout: F2[Long] =
             for {
@@ -1452,11 +1449,10 @@ final class Stream[+F[_], +O] private[fs2] (private[fs2] val underlying: Pull[F,
               b <- supply.tryAcquireN(k)
             } yield if (b) k + 1 else 1
 
-          // in JS cancellation doesn't always seem to run, so race conditions should restore state on their own
           for {
             acq <- F.race(F.sleep(timeout), waitSupply).flatMap {
               case Left(_)  => onTimeout
-              case Right(_) => supply.acquireN(outputLong).as(outputLong)
+              case Right(_) => F.pure(outputLong)
             }
             buf <- buffer.modify(_.splitAt(acq.toInt))
             _ <- demand.releaseN(buf.data.size.toLong)
