@@ -396,7 +396,7 @@ object Pull extends PullLowPriority {
   def output[F[_], O](os: Chunk[O]): Pull[F, O, Unit] =
     if (os.isEmpty) Pull.done else Output[O](os)
 
-  private[fs2] def acquire[F[_], R](
+  def acquire[F[_], R](
       resource: F[R],
       release: (R, ExitCase) => F[Unit]
   ): Pull[F, Nothing, R] =
