@@ -23,8 +23,7 @@ package fs2
 package interop
 package flow
 
-import cats.MonadThrow
-import cats.effect.kernel.Async
+import cats.effect.kernel.{Async, MonadCancelThrow, Resource}
 import cats.syntax.all._
 
 import java.util.concurrent.Flow.{Subscriber, Subscription}
@@ -39,7 +38,7 @@ import java.util.concurrent.atomic.AtomicReference
 private[flow] final class StreamSubscriber[F[_], A](
     private[flow] val subscriber: StreamSubscriber.FSM[F, A]
 )(implicit
-    F: MonadThrow[F]
+    F: MonadCancelThrow[F]
 ) extends Subscriber[A] {
 
   /** Called by an upstream reactive-streams system. */
@@ -65,7 +64,7 @@ private[flow] final class StreamSubscriber[F[_], A](
   }
 
   /** Creates a [[Stream]] from this [[Subscriber]]. */
-  def stream(subscribe: F[Unit]): Stream[F, A] =
+  def stream(subscribe: Resource[F, Unit]): Stream[F, A] =
     subscriber.stream(subscribe)
 }
 
@@ -97,8 +96,8 @@ private[flow] object StreamSubscriber {
     def dequeue1: F[Either[Throwable, Option[Chunk[A]]]]
 
     /** Downstream [[Stream]]. */
-    final def stream(subscribe: F[Unit])(implicit ev: MonadThrow[F]): Stream[F, A] =
-      Stream.bracket(subscribe)(_ => onFinalize) >>
+    final def stream(subscribe: Resource[F, Unit])(implicit ev: MonadCancelThrow[F]): Stream[F, A] =
+      Stream.resource(subscribe).onFinalize(onFinalize) >>
         Stream
           .eval(dequeue1)
           .repeat

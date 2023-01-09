@@ -23,7 +23,7 @@ package fs2
 package interop
 
 import cats.effect.kernel.{Async, Resource}
-import java.util.concurrent.Flow.Publisher
+import java.util.concurrent.Flow.{Publisher, Subscriber}
 
 /** Implementation of the reactive-streams protocol for fs2; based on Java Flow.
   *
@@ -36,7 +36,7 @@ import java.util.concurrent.Flow.Publisher
   * scala>
   * scala> val upstream: Stream[IO, Int] = Stream(1, 2, 3).covary[IO]
   * scala> val publisher: Resource[IO, Publisher[Int]] = upstream.toPublisher
-  * scala> val downstream: Stream[IO, Int] = Stream.resource(publisher).flatMap(p => p.toStream[IO](bufferSize = 16))
+  * scala> val downstream: Stream[IO, Int] = fromPublisher(publisher, 16)
   * scala>
   * scala> downstream.compile.toVector.unsafeRunSync()
   * res0: Vector[Int] = Vector(1, 2, 3)
@@ -46,7 +46,29 @@ import java.util.concurrent.Flow.Publisher
   */
 package object flow {
 
-  /** Creates a [[Stream]] from an [[Publisher]].
+  /** Creates a [[Stream]] from a [[Publisher]].
+    *
+    * The publisher only receives a subscriber when the stream is run.
+    *
+    * @param publisher The [[Publisher]] to transform, expressed as a `
+    * @param bufferSize setup the number of elements asked each time from the [[Publisher]].
+    *                   A high number can be useful if the publisher is triggering from IO,
+    *                   like requesting elements from a database.
+    *                   The publisher can use this `bufferSize` to query elements in batch.
+    *                   A high number will also lead to more elements in memory.
+    */
+  def fromPublisher[F[_], A](
+      bufferSize: Int
+  )(publisher: Subscriber[A] => Resource[F, Unit])(implicit
+      F: Async[F]
+  ): Stream[F, A] =
+    Stream
+      .eval(StreamSubscriber[F, A](bufferSize))
+      .flatMap { subscriber =>
+        subscriber.stream(publisher(subscriber))
+      }
+
+  /** Creates a [[Stream]] from a [[Publisher]].
     *
     * The publisher only receives a subscriber when the stream is run.
     *
@@ -58,32 +80,12 @@ package object flow {
     *                   A high number will also lead to more elements in memory.
     */
   def fromPublisher[F[_], A](
-      publisher: Publisher[A],
+      publisher: Resource[F, Publisher[A]],
       bufferSize: Int
   )(implicit
       F: Async[F]
   ): Stream[F, A] =
-    Stream
-      .eval(StreamSubscriber[F, A](bufferSize))
-      .flatMap { subscriber =>
-        subscriber.stream(
-          F.delay(publisher.subscribe(subscriber))
-        )
-      }
-
-  implicit final class PublisherOps[A](private val publisher: Publisher[A]) extends AnyVal {
-
-    /** Creates a [[Stream]] from an [[Publisher]].
-      *
-      * @param bufferSize setup the number of elements asked each time from the [[Publisher]].
-      *                   A high number can be useful is the publisher is triggering from IO,
-      *                   like requesting elements from a database.
-      *                   The publisher can use this `bufferSize` to query elements in batch.
-      *                   A high number will also lead to more elements in memory.
-      */
-    def toStream[F[_]](bufferSize: Int)(implicit F: Async[F]): Stream[F, A] =
-      flow.fromPublisher(publisher, bufferSize)
-  }
+    fromPublisher(bufferSize)(sub => publisher.evalMap(pub => F.delay(pub.subscribe(sub))))
 
   /** Creates a [[Publisher]] from a [[Stream]].
     *
