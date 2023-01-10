@@ -41,7 +41,6 @@ private[reactivestreams] final class StreamSubscription[F[_], A](
     cancelled: SignallingRef[F, Boolean],
     sub: Subscriber[A],
     stream: Stream[F, A],
-    startDispatcher: Dispatcher[F],
     requestDispatcher: Dispatcher[F]
 )(implicit F: Async[F])
     extends Subscription {
@@ -51,7 +50,7 @@ private[reactivestreams] final class StreamSubscription[F[_], A](
   def onError(e: Throwable) = cancelled.set(true) >> F.delay(sub.onError(e))
   def onComplete = cancelled.set(true) >> F.delay(sub.onComplete)
 
-  def unsafeStart(): Unit = {
+  def run: F[Unit] = {
     def subscriptionPipe: Pipe[F, A, A] =
       in => {
         def go(s: Stream[F, A]): Pull[F, A, Unit] =
@@ -67,17 +66,14 @@ private[reactivestreams] final class StreamSubscription[F[_], A](
         go(in).stream
       }
 
-    val s =
-      stream
-        .through(subscriptionPipe)
-        .interruptWhen(cancelled)
-        .evalMap(x => F.delay(sub.onNext(x)))
-        .handleErrorWith(e => Stream.eval(onError(e)))
-        .onFinalize(cancelled.get.ifM(ifTrue = F.unit, ifFalse = onComplete))
-        .compile
-        .drain
-
-    startDispatcher.unsafeRunAndForget(s)
+    stream
+      .through(subscriptionPipe)
+      .interruptWhen(cancelled)
+      .evalMap(x => F.delay(sub.onNext(x)))
+      .handleErrorWith(e => Stream.eval(onError(e)))
+      .onFinalize(cancelled.get.ifM(ifTrue = F.unit, ifFalse = onComplete))
+      .compile
+      .drain
   }
 
   // According to the spec, it's acceptable for a concurrent cancel to not
@@ -86,8 +82,9 @@ private[reactivestreams] final class StreamSubscription[F[_], A](
   // ordering is guaranteed by a sequential d
   // See https://github.com/zainab-ali/fs2-reactive-streams/issues/29
   // and https://github.com/zainab-ali/fs2-reactive-streams/issues/46
+  private def cancelMe: F[Unit] = cancelled.set(true)
   def cancel(): Unit =
-    requestDispatcher.unsafeRunAndForget(cancelled.set(true))
+    requestDispatcher.unsafeRunAndForget(cancelMe)
 
   def request(n: Long): Unit = {
     val request: F[Request] =
@@ -109,15 +106,27 @@ private[reactivestreams] object StreamSubscription {
   case object Infinite extends Request
   case class Finite(n: Long) extends Request
 
-  def apply[F[_]: Async, A](
-      sub: Subscriber[A],
-      stream: Stream[F, A],
-      startDispatcher: Dispatcher[F],
-      requestDispatcher: Dispatcher[F]
-  ): F[StreamSubscription[F, A]] =
-    SignallingRef(false).flatMap { cancelled =>
-      Queue.unbounded[F, Request].map { requests =>
-        new StreamSubscription(requests, cancelled, sub, stream, startDispatcher, requestDispatcher)
-      }
+  def subscribe[F[_], A](
+    stream: Stream[F, A],
+    subscriber: Subscriber[A]
+  ) (
+    implicit F: Async[F]
+  ): F[Unit] =
+    (
+      Dispatcher.sequential[F],
+      Resource.eval(SignallingRef(false)),
+      Resource.eval(Queue.unbounded[F, Request])
+    ).mapN {
+      case (requestDispatcher, cancelled, requests) =>
+        new StreamSubscription(
+          requests,
+          cancelled,
+          subscriber,
+          stream,
+          requestDispatcher
+        )
+    } use { subscription =>
+      F.delay(subscriber.onSubscribe(subscription)) >>
+      F.onCancel(subscription.run, subscription.cancelMe)
     }
 }

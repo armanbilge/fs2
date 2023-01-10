@@ -94,14 +94,16 @@ package object reactivestreams {
 
   implicit final class StreamOps[F[_], A](val stream: Stream[F, A]) {
 
-    /** Creates a [[StreamUnicastPublisher]] from a stream.
+    /** Creates a [[StreamPublisher]] from a stream.
       *
-      * This publisher can only have a single subscription.
       * The stream is only ran when elements are requested.
       */
     def toUnicastPublisher(implicit
         F: Async[F]
-    ): Resource[F, StreamUnicastPublisher[F, A]] =
-      StreamUnicastPublisher(stream)
+    ): Resource[F, StreamPublisher[F, A]] =
+      StreamPublisher(stream)
   }
+
+  def subscribeStream[F[_], A](stream: Stream[F, A], subscriber: Subscriber[A])(implicit F: Async[F]): F[Unit] =
+    StreamSubscription.subscribe(stream, subscriber)
 }
