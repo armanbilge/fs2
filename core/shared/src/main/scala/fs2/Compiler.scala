@@ -62,6 +62,10 @@ sealed trait Compiler[F[_], G[_]] {
   private[fs2] def apply[O, B](stream: Pull[F, O, Unit], init: B)(
       fold: (B, Chunk[O]) => B
   ): G[B]
+
+  private[fs2] def apply[O, B](stream: Pull[F, O, Unit], scope: Scope[F], init: B)(
+      fold: (B, Chunk[O]) => B
+  ): G[B] = ???
 }
 
 private[fs2] trait CompilerLowPriority2 {
@@ -89,6 +93,12 @@ private[fs2] trait CompilerLowPriority1 extends CompilerLowPriority2 {
       val target: Monad[F] = implicitly
       def apply[O, B](
           stream: Pull[F, O, Unit],
+          init: B
+      )(foldChunk: (B, Chunk[O]) => B): F[B] = F.compile(stream, init, foldChunk)
+
+      override def apply[O, B](
+          stream: Pull[F, O, Unit],
+          scope: Scope[F],
           init: B
       )(foldChunk: (B, Chunk[O]) => B): F[B] = F.compile(stream, init, foldChunk)
     }
@@ -156,6 +166,13 @@ object Compiler extends CompilerLowPriority {
       Resource
         .makeCase(Scope.newRoot[F](this))((scope, ec) => scope.close(ec).rethrow)
         .use(scope => Pull.compile[F, O, Out](p, scope, false, init)(foldChunk))
+
+    private[fs2] def compile[O, Out](
+        p: Pull[F, O, Unit],
+        scope: Scope[F],
+        init: Out,
+        foldChunk: (Out, Chunk[O]) => Out
+    ): F[Out] = Pull.compile[F, O, Out](p, scope, true, init)(foldChunk)
 
     def pure[A](a: A): F[A] = F.pure(a)
     def handleErrorWith[A](fa: F[A])(f: Throwable => F[A]): F[A] = F.handleErrorWith(fa)(f)
