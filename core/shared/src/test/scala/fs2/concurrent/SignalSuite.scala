@@ -36,6 +36,8 @@ class SignalSuite extends Fs2Suite {
       .withMinSuccessfulTests(10)
       .withWorkers(1)
 
+  override def munitIOTimeout = 2.seconds
+
   def waitFor(predicate: IO[Boolean]): IO[Unit] =
     predicate.flatMap(passed => if (passed) IO.unit else IO.sleep(5.millis) >> waitFor(predicate))
 

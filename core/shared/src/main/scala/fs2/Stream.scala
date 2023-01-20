@@ -573,7 +573,7 @@ final class Stream[+F[_], +O] private[fs2] (private[fs2] val underlying: Pull[F,
             .flatMap(Pull.output1(_))
         }
 
-      (back.streamNoScope, watch(this))
+      (back.stream, watch(this))
     }
 
     Stream.eval(fstream)
