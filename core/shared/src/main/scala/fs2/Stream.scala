@@ -550,18 +550,30 @@ final class Stream[+F[_], +O] private[fs2] (private[fs2] val underlying: Pull[F,
     } yield {
       def watch[A](str: Stream[F2, A]) = str.interruptWhen(interrupt.get.attempt)
 
-      val compileBack: F2[Unit] = watch(that).compile.drain.guaranteeCase {
-        // Pass the result of backstream completion in the backResult deferred.
-        // IF result of back-stream was failed, interrupt fore. Otherwise, let it be
-        case Outcome.Errored(t) => backResult.complete(Left(t)) >> interrupt.complete(()).void
-        case _                  => backResult.complete(Right(())).void
-      }.voidError
+      def compileBack(scope: Scope[F2]): F2[Unit] =
+        Pull
+          .compile(watch(that).underlying, scope, true, ())((_, _) => ())
+          .guaranteeCase {
+            // Pass the result of backstream completion in the backResult deferred.
+            // IF result of back-stream was failed, interrupt fore. Otherwise, let it be
+            case Outcome.Errored(t) => backResult.complete(Left(t)) >> interrupt.complete(()).void
+            case _                  => backResult.complete(Right(())).void
+          }
+          .voidError
 
       // stop background process but await for it to finalise with a result
       // We use F.fromEither to bring errors from the back into the fore
       val stopBack: F2[Unit] = interrupt.complete(()) >> backResult.get.flatMap(F.fromEither)
 
-      (Stream.bracket(compileBack.start)(_ => stopBack), watch(this))
+      val back = Pull
+        .getScope[F2]
+        .flatMap { scope =>
+          Pull
+            .acquire[F2, Fiber[F2, Throwable, Unit]](compileBack(scope).start, (_, _) => stopBack)
+            .flatMap(Pull.output1(_))
+        }
+
+      (back.streamNoScope, watch(this))
     }
 
     Stream.eval(fstream)
