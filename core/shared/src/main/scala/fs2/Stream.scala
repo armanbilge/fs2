@@ -565,13 +565,11 @@ final class Stream[+F[_], +O] private[fs2] (private[fs2] val underlying: Pull[F,
       // We use F.fromEither to bring errors from the back into the fore
       val stopBack: F2[Unit] = interrupt.complete(()) >> backResult.get.flatMap(F.fromEither)
 
-      val back = Pull
-        .getScope[F2]
-        .flatMap { scope =>
-          Pull
-            .acquire[F2, Fiber[F2, Throwable, Unit]](compileBack(scope).start, (_, _) => stopBack)
-            .flatMap(Pull.output1(_))
-        }
+      val back = Pull.getScope[F2].flatMap { scope =>
+        Pull
+          .acquire[F2, Fiber[F2, Throwable, Unit]](compileBack(scope).start, (_, _) => stopBack)
+          .flatMap(Pull.output1(_))
+      }
 
       (back.stream, watch(this))
     }
