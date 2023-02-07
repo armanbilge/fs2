@@ -30,6 +30,7 @@ import cats.syntax.all._
 import java.util.Objects.requireNonNull
 import java.util.concurrent.Flow.{Subscriber, Subscription}
 import java.util.concurrent.atomic.AtomicReference
+import scala.concurrent.ExecutionContext
 
 /** Implementation of a [[Subscriber]].
   *
@@ -119,7 +120,7 @@ private[flow] object StreamSubscriber {
   }
 
   private def fsm[F[_], A](
-      chunkSize: Int
+      chunkSize: Int,
   )(implicit F: Async[F]): F[FSM[F, A]] = {
     type Out = Either[Throwable, Option[Chunk[A]]]
 
