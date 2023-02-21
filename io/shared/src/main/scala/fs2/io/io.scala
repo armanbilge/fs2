@@ -43,7 +43,7 @@ package object io extends ioplatform {
       fis,
       F.delay(new Array[Byte](chunkSize)),
       closeAfterUse
-    )((is, buf) => F.blocking(is.read(buf)))
+    )((is, buf) => F.interruptible(is.read(buf)))
 
   /** Reads all bytes from the specified `InputStream` with a buffer size of `chunkSize`.
     * Set `closeAfterUse` to false if the `InputStream` should not be closed after use.
@@ -62,7 +62,7 @@ package object io extends ioplatform {
       fis,
       F.pure(new Array[Byte](chunkSize)),
       closeAfterUse
-    )((is, buf) => F.blocking(is.read(buf)))
+    )((is, buf) => F.interruptible(is.read(buf)))
 
   private def readBytesFromInputStream[F[_]](is: InputStream, buf: Array[Byte])(
       read: (InputStream, Array[Byte]) => F[Int]
