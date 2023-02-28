@@ -28,6 +28,7 @@ import java.nio.channels.{FileChannel, FileLock}
 import java.nio.file.{OpenOption, Path => JPath}
 
 import cats.effect.kernel.{Async, Resource, Sync}
+import cats.effect.syntax.all._
 
 private[file] trait FileHandlePlatform[F[_]] {
 
@@ -79,18 +80,18 @@ private[file] trait FileHandleCompanionPlatform {
   /** Creates a `FileHandle[F]` from a `java.nio.channels.FileChannel`. */
   private[file] def make[F[_]](
       chan: FileChannel
-  )(implicit F: Sync[F]): FileHandle[F] =
+  )(implicit F: Async[F]): FileHandle[F] =
     new FileHandle[F] {
       type Lock = FileLock
 
       override def force(metaData: Boolean): F[Unit] =
-        F.blocking(chan.force(metaData))
+        F.blocking(chan.force(metaData)).cancelable(cancel)
 
       override def lock: F[Lock] =
-        F.blocking(chan.lock)
+        F.blocking(chan.lock).cancelable(cancel)
 
       override def lock(position: Long, size: Long, shared: Boolean): F[Lock] =
-        F.blocking(chan.lock(position, size, shared))
+        F.blocking(chan.lock(position, size, shared)).cancelable(cancel)
 
       override def read(numBytes: Int, offset: Long): F[Option[Chunk[Byte]]] =
         F.blocking {
@@ -99,7 +100,7 @@ private[file] trait FileHandleCompanionPlatform {
           if (len < 0) None
           else if (len == 0) Some(Chunk.empty)
           else Some(Chunk.array(buf.array, 0, len))
-        }
+        }.cancelable(cancel)
 
       override def size: F[Long] =
         F.blocking(chan.size)
@@ -118,5 +119,7 @@ private[file] trait FileHandleCompanionPlatform {
 
       override def write(bytes: Chunk[Byte], offset: Long): F[Int] =
         F.blocking(chan.write(bytes.toByteBuffer, offset))
+
+      private[this] def cancel: F[Unit] = F.blocking(chan.close())
     }
 }

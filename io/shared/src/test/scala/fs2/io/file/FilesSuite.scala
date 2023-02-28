@@ -801,4 +801,18 @@ class FilesSuite extends Fs2IoSuite with BaseFileSuite {
     }
   }
 
+  group("file handle") {
+    test("read is cancelable".only) {
+      IO.ref(false).flatMap { successful =>
+        Files[IO].open(Path("/dev/random"), Flags.Read).use { handle =>
+          handle
+            .read(1024 * 1024 * 128, 0)
+            .guaranteeCase(oc => successful.set(oc.isSuccess))
+            .timeoutTo(1.millisecond, IO.unit) *>
+            successful.get.assertEquals(false) // confirm it canceled
+        }
+      }
+    }
+  }
+
 }
