@@ -22,6 +22,11 @@
 package fs2
 package compression
 
+import cats.~>
+import cats.Functor
+import cats.data.EitherT
+import cats.data.Kleisli
+
 /** Provides the capability to compress/decompress using deflate and gzip.
   * On JVM an instance is available given a `Sync[F]`.
   * On Node.js an instance is available for `Async[F]` by importing `fs2.io.compression._`.
@@ -70,10 +75,22 @@ sealed trait Compression[F[_]] extends CompressionPlatform[F] {
     * @return See [[compression.GunzipResult]]
     */
   def gunzip(inflateParams: InflateParams): Stream[F, Byte] => Stream[F, GunzipResult[F]]
+
+  /** Translates effect type from `F` to `G` using the supplied `FunctionK`.
+    */
+  def translate[G[_]](fk: F ~> G): Compression[G]
 }
 
 object Compression extends CompressionCompanionPlatform {
   private[fs2] trait UnsealedCompression[F[_]] extends Compression[F]
 
   def apply[F[_]](implicit F: Compression[F]): Compression[F] = F
+
+  implicit def forEitherT[F[_]: Functor, A](implicit
+      compression: Compression[F]
+  ): Compression[EitherT[F, A, *]] = compression.translate(EitherT.liftK)
+
+  implicit def forKleisli[F[_], A](implicit
+      compression: Compression[F]
+  ): Compression[Kleisli[F, A, *]] = compression.translate(Kleisli.liftK)
 }
