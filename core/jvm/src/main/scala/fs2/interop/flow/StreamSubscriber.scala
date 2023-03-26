@@ -108,6 +108,32 @@ private[flow] final class StreamSubscriber[F[_], A] private (
 
   // Finite state machine.
 
+  private type CB[A] = Either[Throwable, Option[Chunk[A]]] => Unit
+
+  /** A finite state machine describing the Subscriber. */
+  private sealed trait State[A]
+  private object State {
+    type State[A] = StreamSubscriber.State[A]
+
+    final case class Uninitialized[A](cb: Option[CB[A]]) extends State[A]
+    final case class Idle[A](s: Subscription) extends State[A]
+    final case class WaitingOnUpstream[A](idx: Int, buffer: Array[A], cb: CB[A], s: Subscription)
+        extends State[A]
+    final case class Failed[A](ex: StreamSubscriberException) extends State[A]
+    final case class Terminal[A]() extends State[A]
+  }
+
+  private sealed trait Input[A]
+  private object Input {
+    type Input[A] = StreamSubscriber.Input[A]
+
+    final case class Subscribe[A](s: Subscription) extends Input[A]
+    final case class Next[A](a: A) extends Input[A]
+    final case class Error[A](ex: Throwable) extends Input[A]
+    final case class Complete[A](canceled: Boolean) extends Input[A]
+    final case class Dequeue[A](cb: CB[A]) extends Input[A]
+  }
+
   /** Helper to reduce noise when creating unary functions. */
   private def run(block: => Unit): () => Unit = () => block
 
@@ -298,29 +324,4 @@ private[flow] object StreamSubscriber {
         )
   }
 
-  private type CB[A] = Either[Throwable, Option[Chunk[A]]] => Unit
-
-  /** A finite state machine describing the Subscriber. */
-  private sealed trait State[A]
-  private object State {
-    type State[A] = StreamSubscriber.State[A]
-
-    final case class Uninitialized[A](cb: Option[CB[A]]) extends State[A]
-    final case class Idle[A](s: Subscription) extends State[A]
-    final case class WaitingOnUpstream[A](idx: Int, buffer: Array[A], cb: CB[A], s: Subscription)
-        extends State[A]
-    final case class Failed[A](ex: StreamSubscriberException) extends State[A]
-    final case class Terminal[A]() extends State[A]
-  }
-
-  private sealed trait Input[A]
-  private object Input {
-    type Input[A] = StreamSubscriber.Input[A]
-
-    final case class Subscribe[A](s: Subscription) extends Input[A]
-    final case class Next[A](a: A) extends Input[A]
-    final case class Error[A](ex: Throwable) extends Input[A]
-    final case class Complete[A](canceled: Boolean) extends Input[A]
-    final case class Dequeue[A](cb: CB[A]) extends Input[A]
-  }
 }
