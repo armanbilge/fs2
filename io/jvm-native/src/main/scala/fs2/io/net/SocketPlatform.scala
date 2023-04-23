@@ -25,7 +25,7 @@ package net
 
 import com.comcast.ip4s.{IpAddress, SocketAddress}
 import cats.effect.{Async, Resource}
-import cats.effect.std.Semaphore
+import cats.effect.std.Mutex
 import cats.syntax.all._
 
 import java.net.InetSocketAddress
@@ -37,20 +37,20 @@ private[net] trait SocketCompanionPlatform {
       ch: AsynchronousSocketChannel
   ): Resource[F, Socket[F]] =
     Resource.make {
-      (Semaphore[F](1), Semaphore[F](1)).mapN { (readSemaphore, writeSemaphore) =>
+      (Mutex[F], Mutex[F]).mapN { (readSemaphore, writeSemaphore) =>
         new AsyncSocket[F](ch, readSemaphore, writeSemaphore)
       }
     }(_ => Async[F].delay(if (ch.isOpen) ch.close else ()))
 
   private[net] abstract class BufferedReads[F[_]](
-      readSemaphore: Semaphore[F]
+      readSemaphore: Mutex[F]
   )(implicit F: Async[F])
       extends Socket[F] {
     private[this] final val defaultReadSize = 8192
     private[this] var readBuffer: ByteBuffer = ByteBuffer.allocateDirect(defaultReadSize)
 
     private def withReadBuffer[A](size: Int)(f: ByteBuffer => F[A]): F[A] =
-      readSemaphore.permit.use { _ =>
+      readSemaphore.lock.use { _ =>
         F.delay {
           if (readBuffer.capacity() < size)
             readBuffer = ByteBuffer.allocateDirect(size)
@@ -107,8 +107,8 @@ private[net] trait SocketCompanionPlatform {
 
   private final class AsyncSocket[F[_]](
       ch: AsynchronousSocketChannel,
-      readSemaphore: Semaphore[F],
-      writeSemaphore: Semaphore[F]
+      readSemaphore: Mutex[F],
+      writeSemaphore: Mutex[F]
   )(implicit F: Async[F])
       extends BufferedReads[F](readSemaphore) {
 
@@ -142,7 +142,7 @@ private[net] trait SocketCompanionPlatform {
             go(buff)
           else F.unit
         }
-      writeSemaphore.permit.use { _ =>
+      writeSemaphore.lock.use { _ =>
         go(bytes.toByteBuffer)
       }
     }

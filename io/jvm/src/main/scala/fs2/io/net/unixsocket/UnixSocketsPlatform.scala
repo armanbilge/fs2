@@ -22,7 +22,7 @@
 package fs2.io.net.unixsocket
 
 import cats.effect.kernel.{Async, Resource}
-import cats.effect.std.Semaphore
+import cats.effect.std.Mutex
 import cats.syntax.all._
 import com.comcast.ip4s.{IpAddress, SocketAddress}
 import fs2.{Chunk, Stream}
@@ -89,15 +89,15 @@ private[unixsocket] trait UnixSocketsCompanionPlatform {
       ch: SocketChannel
   ): Resource[F, Socket[F]] =
     Resource.make {
-      (Semaphore[F](1), Semaphore[F](1)).mapN { (readSemaphore, writeSemaphore) =>
+      (Mutex[F], Mutex[F]).mapN { (readSemaphore, writeSemaphore) =>
         new AsyncSocket[F](ch, readSemaphore, writeSemaphore)
       }
     }(_ => Async[F].delay(if (ch.isOpen) ch.close else ()))
 
   private final class AsyncSocket[F[_]](
       ch: SocketChannel,
-      readSemaphore: Semaphore[F],
-      writeSemaphore: Semaphore[F]
+      readSemaphore: Mutex[F],
+      writeSemaphore: Mutex[F]
   )(implicit F: Async[F])
       extends Socket.BufferedReads[F](readSemaphore) {
 
@@ -110,7 +110,7 @@ private[unixsocket] trait UnixSocketsCompanionPlatform {
           if (buff.remaining <= 0) F.unit
           else go(buff)
         }
-      writeSemaphore.permit.use { _ =>
+      writeSemaphore.lock.use { _ =>
         go(bytes.toByteBuffer)
       }
     }
