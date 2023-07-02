@@ -31,6 +31,8 @@ import com.comcast.ip4s.{Dns, Host, IpAddress, Port, SocketAddress}
 
 import fs2.io.net.tls.TLSContext
 
+import java.net.ProtocolFamily
+
 private[net] trait NetworkPlatform[F[_]]
 
 private[net] trait NetworkCompanionPlatform extends NetworkLowPriority { self: Network.type =>
@@ -41,6 +43,9 @@ private[net] trait NetworkCompanionPlatform extends NetworkLowPriority { self: N
     new UnsealedNetwork[F] {
       private lazy val globalSocketGroup =
         new FdPollingSocketGroup[F]()(Dns.forAsync, implicitly, implicitly)
+
+      private lazy val globalDatagramSocketGroup =
+        new FdPollingDatagramSocketGroup[F]()(Dns.forAsync, implicitly, implicitly)
 
       def client(
           to: SocketAddress[Host],
@@ -59,6 +64,14 @@ private[net] trait NetworkCompanionPlatform extends NetworkLowPriority { self: N
           options: List[SocketOption]
       ): Resource[F, (SocketAddress[IpAddress], Stream[F, Socket[F]])] =
         globalSocketGroup.serverResource(address, port, options)
+
+      def openDatagramSocket(
+          address: Option[Host],
+          port: Option[Port],
+          options: List[SocketOption],
+          protocolFamily: Option[ProtocolFamily]
+      ): Resource[F, DatagramSocket[F]] =
+        globalDatagramSocketGroup.openDatagramSocket(address, port, options, protocolFamily)
 
       def tlsContext: TLSContext.Builder[F] = TLSContext.Builder.forAsync
     }
@@ -89,6 +102,14 @@ private[net] trait NetworkCompanionPlatform extends NetworkLowPriority { self: N
         globalSocketGroup.serverResource(address, port, options)
 
       def tlsContext: TLSContext.Builder[F] = TLSContext.Builder.forAsync(F)
+
+      def openDatagramSocket(
+          address: Option[Host],
+          port: Option[Port],
+          options: List[SocketOption],
+          protocolFamily: Option[ProtocolFamily]
+      ): Resource[F, DatagramSocket[F]] =
+        Resource.eval(F.raiseError(new UnsupportedOperationException))
     }
 
 }
