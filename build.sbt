@@ -250,6 +250,7 @@ lazy val root = tlCrossRootProject
 
 lazy val commonNativeSettings = Seq[Setting[_]](
   tlVersionIntroduced := List("2.12", "2.13", "3").map(_ -> "3.2.15").toMap,
+  Test / nativeConfig ~= { c => c.withLinkingOptions(c.linkingOptions :+ "-lcrypto") },
   Test / nativeBrewFormulas += "openssl"
 )
 
@@ -331,6 +332,7 @@ lazy val io = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
   .nativeSettings(commonNativeSettings)
   .nativeSettings(
+    Test / nativeConfig ~= { c => c.withLinkingOptions(c.linkingOptions :+ "-ls2n") },
     Test / nativeBrewFormulas += "s2n",
     Test / envVars ++= Map("S2N_DONT_MLOCK" -> "1")
   )

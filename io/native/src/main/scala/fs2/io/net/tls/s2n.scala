@@ -26,7 +26,6 @@ import org.typelevel.scalaccompat.annotation._
 import scala.scalanative.unsafe._
 
 @extern
-@link("s2n")
 @nowarn212("cat=unused")
 private[tls] object s2n {
 

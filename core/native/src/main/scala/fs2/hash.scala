@@ -93,7 +93,6 @@ object hash {
   private[this] def getError(): String =
     fromCString(ERR_reason_error_string(ERR_get_error()))
 
-  @link("crypto")
   @extern
   @nowarn212("cat=unused")
   private[fs2] object openssl {
