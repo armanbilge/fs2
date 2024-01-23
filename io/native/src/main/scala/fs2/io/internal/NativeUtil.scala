@@ -21,13 +21,15 @@
 
 package fs2.io.internal
 
-import cats.effect.Sync
+import cats.effect.kernel.Resource
+import cats.effect.kernel.Sync
 
 import java.io.IOException
 import java.net.BindException
 import java.net.ConnectException
 import scala.scalanative.annotation.alwaysinline
 import scala.scalanative.libc.errno._
+import scala.scalanative.libc.stdlib
 import scala.scalanative.posix.fcntl._
 import scala.scalanative.posix.errno._
 import scala.scalanative.posix.string._
@@ -82,5 +84,15 @@ private[io] object NativeUtil {
   def setNonBlocking[F[_]](fd: CInt)(implicit F: Sync[F]): F[Unit] = F.delay {
     guard_(fcntl(fd, F_SETFL, O_NONBLOCK))
   }
+
+  def malloc[F[_]](size: CSize)(implicit F: Sync[F]): Resource[F, Ptr[Byte]] =
+    Resource.make {
+      F.delay {
+        val ptr = stdlib.malloc(size)
+        if (ptr != null)
+          ptr
+        else throw errnoToThrowable(errno)
+      }
+    }(ptr => F.delay(stdlib.free(ptr)))
 
 }

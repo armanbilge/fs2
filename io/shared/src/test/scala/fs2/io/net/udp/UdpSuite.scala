@@ -25,11 +25,10 @@ package net
 package udp
 
 import cats.effect.IO
-import cats.syntax.all._
 
 import com.comcast.ip4s._
 
-class UdpSuite extends Fs2Suite with UdpSuitePlatform {
+class UdpSuite extends Fs2Suite {
   group("udp") {
     test("echo one") {
       val msg = Chunk.array("Hello, world!".getBytes)
@@ -92,39 +91,39 @@ class UdpSuite extends Fs2Suite with UdpSuitePlatform {
         .assertEquals(expected)
     }
 
-    test("multicast".ignore) {
-      // Fails often based on routing table of host machine
-      val group = mip"232.10.10.10"
-      val groupJoin = MulticastJoin.asm(group)
-      val msg = Chunk.array("Hello, world!".getBytes)
-      Stream
-        .resource(
-          Network[IO].openDatagramSocket(
-            options = List(DatagramSocketOption.multicastTtl(1)),
-            protocolFamily = Some(v4ProtocolFamily)
-          )
-        )
-        .flatMap { serverSocket =>
-          Stream.eval(serverSocket.localAddress).map(_.port).flatMap { serverPort =>
-            val server = Stream
-              .exec(
-                v4Interfaces.traverse_(interface => serverSocket.join(groupJoin, interface))
-              ) ++
-              serverSocket.reads
-                .evalMap(packet => serverSocket.write(packet))
-                .drain
-            val client = Stream.resource(Network[IO].openDatagramSocket()).flatMap { clientSocket =>
-              Stream(Datagram(SocketAddress(group.address, serverPort), msg))
-                .through(clientSocket.writes)
-                .drain ++ Stream.eval(clientSocket.read)
-            }
-            server.mergeHaltBoth(client)
-          }
-        }
-        .compile
-        .lastOrError
-        .map(_.bytes)
-        .assertEquals(msg)
-    }
+    // test("multicast".ignore) {
+    //   // Fails often based on routing table of host machine
+    //   val group = mip"232.10.10.10"
+    //   val groupJoin = MulticastJoin.asm(group)
+    //   val msg = Chunk.array("Hello, world!".getBytes)
+    //   Stream
+    //     .resource(
+    //       Network[IO].openDatagramSocket(
+    //         options = List(DatagramSocketOption.multicastTtl(1)),
+    //         protocolFamily = Some(v4ProtocolFamily)
+    //       )
+    //     )
+    //     .flatMap { serverSocket =>
+    //       Stream.eval(serverSocket.localAddress).map(_.port).flatMap { serverPort =>
+    //         val server = Stream
+    //           .exec(
+    //             v4Interfaces.traverse_(interface => serverSocket.join(groupJoin, interface))
+    //           ) ++
+    //           serverSocket.reads
+    //             .evalMap(packet => serverSocket.write(packet))
+    //             .drain
+    //         val client = Stream.resource(Network[IO].openDatagramSocket()).flatMap { clientSocket =>
+    //           Stream(Datagram(SocketAddress(group.address, serverPort), msg))
+    //             .through(clientSocket.writes)
+    //             .drain ++ Stream.eval(clientSocket.read)
+    //         }
+    //         server.mergeHaltBoth(client)
+    //       }
+    //     }
+    //     .compile
+    //     .lastOrError
+    //     .map(_.bytes)
+    //     .assertEquals(msg)
+    // }
   }
 }
